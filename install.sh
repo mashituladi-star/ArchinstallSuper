@@ -202,17 +202,18 @@ run_installer() {
     case "${answer,,}" in
         ""|д|да|y|yes)
             info "Передаю управление официальному archinstall..."
+            local status=0
             if [[ -n "${PROFILE_CONFIG:-}" ]]; then
-                archinstall --config "$PROFILE_CONFIG"
+                archinstall --config "$PROFILE_CONFIG" || status=$?
             else
-                archinstall
+                archinstall || status=$?
             fi
-            if [[ $? -eq 0 ]]; then
+
+            if [[ "$status" -eq 0 ]]; then
                 success "archinstall завершил работу."
                 say "Проверь итоговое сообщение установщика и его журнал: /var/log/archinstall/install.log"
                 say "Перезагрузка не выполняется автоматически. Когда убедишься, что установка завершена, выполни: reboot"
             else
-                local status=$?
                 error "archinstall завершился с кодом ${status}. Система не будет перезагружена."
                 say "Журнал для диагностики: /var/log/archinstall/install.log"
                 return "$status"
