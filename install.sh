@@ -2,7 +2,7 @@
 # ArchinstallSuper — самостоятельный UEFI-установщик Arch Linux.
 set -Eeuo pipefail
 umask 077
-VERSION=0.3.0
+VERSION=0.4.0
 TARGET=/mnt
 LOG=/var/log/archinstallsuper.log
 MODE=minimal
@@ -17,9 +17,41 @@ ROOT_PASSWORD=
 USER_PASSWORD=
 PACKAGES=()
 mkdir -p /var/log
+exec 3>&1 4>&2
 exec > >(tee -a "$LOG") 2>&1
 
-info(){ printf '[INFO] %s\n' "$*"; }
+
+UI=0
+ui_init(){
+  if command -v dialog >/dev/null 2>&1; then UI=1; return; fi
+  if command -v pacman >/dev/null 2>&1 && [[ -t 0 && -t 4 ]]; then
+    info "Подготавливаю полноэкранный интерфейс dialog..."
+    pacman -Sy --needed --noconfirm dialog || warn "Не удалось установить dialog; включён текстовый режим."
+    command -v dialog >/dev/null 2>&1 && UI=1
+  fi
+}
+ui_menu(){
+  local title=$1 prompt=$2 height=$3 width=$4 list_height=$5
+  shift 5
+  if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  UEFI INSTALLER  |  v$VERSION" --title "$title" --menu "$prompt" "$height" "$width" "$list_height" "$@" --output-fd 3 2>&4 || die "Действие отменено."; else
+    printf '\\n%s\\n%s\\n' "$title" "$prompt"
+    local i=1
+    while (( $# )); do printf '%s) %s — %s\\n' "$i" "$1" "$2"; shift 2; ((i+=1)); done
+    read -r -p 'Выбор: ' REPLY
+    printf '%s' "$REPLY"
+  fi
+}
+ui_input(){
+  local title=$1 prompt=$2 initial=${3-}
+  if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "$title" --inputbox "$prompt" 9 64 "$initial" --output-fd 3 2>&4 || die "Действие отменено."; else read -r -p "$prompt " REPLY; printf '%s' "${REPLY:-$initial}"; fi
+}
+ui_password(){
+  local title=$1 prompt=$2
+  if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "$title" --insecure --passwordbox "$prompt" 9 64 --output-fd 3 2>&4 || die "Действие отменено."; else read -r -s -p "$prompt " REPLY; printf '\\n' >&4; printf '%s' "$REPLY"; fi
+}
+ui_msg(){ if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "ArchinstallSuper" --msgbox "$1" 9 70 2>&4; else info "$1"; fi; }
+ui_confirm(){ if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "Подтверждение" --yesno "$1" 11 72 2>&4; else read -r -p "$1 [y/N] " REPLY; [[ $REPLY == y || $REPLY == Y ]]; fi; }
+\ninfo(){ printf '[INFO] %s\n' "$*"; }
 warn(){ printf '[WARN] %s\n' "$*" >&2; }
 die(){ printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 need(){ command -v "$1" >/dev/null 2>&1 || die "Не найдена команда $1"; }
@@ -76,8 +108,13 @@ select_mode(){
   info "Профиль $MODE; окружение ${DESKTOP:-консоль}."
 }
 select_disk(){
-  lsblk -dpno NAME,SIZE,MODEL,TYPE | awk '$4=="disk"{print}'
-  read -r -p 'Полный путь к диску (например /dev/nvme0n1): ' candidate
+  local -a disk_options=()
+  while read -r name size model type; do
+    [[ $type == disk ]] || continue
+    disk_options+=("$name" "$size · $model")
+  done < <(lsblk -dpno NAME,SIZE,MODEL,TYPE)
+  (("${#disk_options[@]}" > 0)) || die "Не найдено дисков."
+  candidate=$(ui_menu "Целевой диск" "ВНИМАНИЕ: выбранный диск будет полностью очищен." 18 80 8 "${disk_options[@]}")
   [[ -b $candidate && $(lsblk -dnro TYPE "$candidate") == disk ]] || die "Укажи целый диск."
   DISK=$(readlink -f "$candidate")
   disk_bytes=$(lsblk -bndo SIZE "$DISK")
@@ -95,16 +132,16 @@ select_disk(){
   [[ $answer == "ERASE $DISK" ]] || die "Подтверждение не совпало."
 }
 system_settings(){
-  read -r -p 'Имя компьютера [archlinux]: ' value; HOSTNAME=${value:-archlinux}
+  HOSTNAME=$(ui_input "Имя компьютера" "Задай hostname:" "archlinux")
   [[ $HOSTNAME =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$ ]] || die "Недопустимое имя компьютера."
-  read -r -p 'Имя пользователя: ' USERNAME
+  USERNAME=$(ui_input "Учётная запись" "Имя обычного пользователя:")
   [[ $USERNAME =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Недопустимое имя пользователя."
-  read -r -p 'Часовой пояс [Europe/Prague]: ' value; TIMEZONE=${value:-Europe/Prague}
+  TIMEZONE=$(ui_input "Регион" "Часовой пояс:" "Europe/Prague")
   [[ -e /usr/share/zoneinfo/$TIMEZONE ]] || die "Неизвестный часовой пояс."
-  read -r -p 'Локаль [en_US.UTF-8]: ' value; LOCALE=${value:-en_US.UTF-8}
+  LOCALE=$(ui_input "Язык системы" "Локаль:" "en_US.UTF-8")
   [[ $LOCALE =~ ^[a-zA-Z_]+\.UTF-8$ ]] || die "Неверный формат локали."
   grep -Eq "^#?${LOCALE}[[:space:]]+UTF-8$" /etc/locale.gen || die "Локаль $LOCALE отсутствует в /etc/locale.gen."
-  read -r -p 'Раскладка [us]: ' value; KEYMAP=${value:-us}
+  KEYMAP=$(ui_input "Клавиатура" "Раскладка:" "us")
   [[ $KEYMAP =~ ^[a-zA-Z0-9_-]+$ ]] || die "Недопустимое имя раскладки."
   find /usr/share/kbd/keymaps -type f -name "${KEYMAP}.map*" -print -quit 2>/dev/null | grep -q . || die "Раскладка $KEYMAP не найдена в live-системе."
   read -r -s -p 'Пароль root: ' ROOT_PASSWORD; printf '\n'
@@ -173,6 +210,7 @@ configure_system(){
 main(){
   check_environment
   check_network
+  ui_init
   select_mode
   select_disk
   system_settings
