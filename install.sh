@@ -53,7 +53,7 @@ select_mode(){
     4)
       MODE=custom; PACKAGES=(base linux linux-firmware networkmanager sudo nano)
       printf 'Окружение: 0) консоль 1) GNOME 2) KDE 3) XFCE 4) Cinnamon\n'
-      read -r -p 'Выбор [1]: ' choice; choice=\${choice:-1}
+      read -r -p 'Выбор [1]: ' choice; choice=${choice:-1}
       case "$choice" in
         0) DESKTOP= ;;
         1) DESKTOP=gnome; PACKAGES+=(gnome gdm pipewire pipewire-alsa pipewire-pulse wireplumber) ;;
@@ -67,13 +67,13 @@ select_mode(){
       read -r -p 'Firefox, VLC, GIMP, LibreOffice? [д/Н] ' choice
       case "$choice" in д|да|y|Y) PACKAGES+=(firefox vlc gimp libreoffice-fresh);; esac
       read -r -p 'Дополнительные пакеты (пробел-разделитель, Enter — пропустить): ' -a extra
-      for p in "\${extra[@]}"; do [[ $p =~ ^[a-zA-Z0-9@._+-]+$ ]] || die "Недопустимый пакет: $p"; PACKAGES+=("$p"); done
+      for p in "${extra[@]}"; do [[ $p =~ ^[a-zA-Z0-9@._+-]+$ ]] || die "Недопустимый пакет: $p"; PACKAGES+=("$p"); done
       ;;
     *) die "Выбери режим от 1 до 4." ;;
   esac
   grep -q GenuineIntel /proc/cpuinfo && PACKAGES+=(intel-ucode)
   grep -q AuthenticAMD /proc/cpuinfo && PACKAGES+=(amd-ucode)
-  info "Профиль $MODE; окружение \${DESKTOP:-консоль}."
+  info "Профиль $MODE; окружение ${DESKTOP:-консоль}."
 }
 select_disk(){
   lsblk -dpno NAME,SIZE,MODEL,TYPE | awk '$4=="disk"{print}'
@@ -86,15 +86,15 @@ select_disk(){
   [[ $answer == "ERASE $DISK" ]] || die "Подтверждение не совпало."
 }
 system_settings(){
-  read -r -p 'Имя компьютера [archlinux]: ' value; HOSTNAME=\${value:-archlinux}
+  read -r -p 'Имя компьютера [archlinux]: ' value; HOSTNAME=${value:-archlinux}
   [[ $HOSTNAME =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$ ]] || die "Недопустимое имя компьютера."
   read -r -p 'Имя пользователя: ' USERNAME
   [[ $USERNAME =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Недопустимое имя пользователя."
-  read -r -p 'Часовой пояс [Europe/Prague]: ' value; TIMEZONE=\${value:-Europe/Prague}
+  read -r -p 'Часовой пояс [Europe/Prague]: ' value; TIMEZONE=${value:-Europe/Prague}
   [[ -e /usr/share/zoneinfo/$TIMEZONE ]] || die "Неизвестный часовой пояс."
-  read -r -p 'Локаль [en_US.UTF-8]: ' value; LOCALE=\${value:-en_US.UTF-8}
+  read -r -p 'Локаль [en_US.UTF-8]: ' value; LOCALE=${value:-en_US.UTF-8}
   [[ $LOCALE =~ ^[a-zA-Z_]+\.UTF-8$ ]] || die "Неверный формат локали."
-  read -r -p 'Раскладка [us]: ' value; KEYMAP=\${value:-us}
+  read -r -p 'Раскладка [us]: ' value; KEYMAP=${value:-us}
   read -r -s -p 'Пароль root: ' ROOT_PASSWORD; printf '\n'
   read -r -s -p 'Повтори пароль root: ' value; printf '\n'
   [[ -n $ROOT_PASSWORD && $ROOT_PASSWORD == "$value" ]] || die "Пароли root не совпадают."
@@ -109,9 +109,9 @@ partition_disk(){
   sgdisk -n 1:0:+1G -t 1:ef00 -c 1:EFI "$DISK"
   sgdisk -n 2:0:0 -t 2:8300 -c 2:ARCHROOT "$DISK"
   partprobe "$DISK"; udevadm settle
-  if [[ $DISK =~ (nvme[0-9]n[0-9]|mmcblk[0-9])$ ]]; then EFI_PART="\${DISK}p1"; ROOT_PART="\${DISK}p2"
-  else EFI_PART="\${DISK}1"; ROOT_PART="\${DISK}2"; fi
-  for n in {1..10}; do [[ -b $EFI_PART && -b $ROOT_PART ]] && break; sleep 1; done
+  if [[ $DISK =~ (nvme[0-9]n[0-9]|mmcblk[0-9])$ ]]; then EFI_PART="${DISK}p1"; ROOT_PART="${DISK}p2"
+  else EFI_PART="${DISK}1"; ROOT_PART="${DISK}2"; fi
+  for _ in {1..10}; do [[ -b $EFI_PART && -b $ROOT_PART ]] && break; sleep 1; done
   [[ -b $EFI_PART && -b $ROOT_PART ]] || die "Разделы не появились."
 }
 install_system(){
@@ -120,8 +120,8 @@ install_system(){
   mkdir -p "$TARGET/boot"
   mount "$ROOT_PART" "$TARGET"
   mount "$EFI_PART" "$TARGET/boot"
-  info "Устанавливаю пакеты: \${PACKAGES[*]}"
-  pacstrap -K "$TARGET" "\${PACKAGES[@]}"
+  info "Устанавливаю пакеты: ${PACKAGES[*]}"
+  pacstrap -K "$TARGET" "${PACKAGES[@]}"
   genfstab -U "$TARGET" > "$TARGET/etc/fstab"
   [[ -s $TARGET/etc/fstab ]] || die "Не создан fstab."
 }
@@ -131,7 +131,7 @@ configure_system(){
   printf '127.0.0.1 localhost\n::1 localhost\n127.0.1.1 %s.localdomain %s\n' "$HOSTNAME" "$HOSTNAME" > "$TARGET/etc/hosts"
   printf 'LANG=%s\n' "$LOCALE" > "$TARGET/etc/locale.conf"
   printf 'KEYMAP=%s\n' "$KEYMAP" > "$TARGET/etc/vconsole.conf"
-  sed -i "s/^#\($LOCALE[[:space:]]\)/\1/" "$TARGET/etc/locale.gen"
+  sed -i "s/^#\(${LOCALE}[[:space:]]\)/\1/" "$TARGET/etc/locale.gen"
   grep -q "^$LOCALE " "$TARGET/etc/locale.gen" || printf '%s UTF-8\n' "$LOCALE" >> "$TARGET/etc/locale.gen"
   arch-chroot "$TARGET" ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
   arch-chroot "$TARGET" hwclock --systohc
