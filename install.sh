@@ -2,7 +2,7 @@
 # ArchinstallSuper — самостоятельный UEFI-установщик Arch Linux.
 set -Eeuo pipefail
 umask 077
-VERSION=0.4.0
+VERSION=0.5.0
 TARGET=/mnt
 LOG=/var/log/archinstallsuper.log
 MODE=minimal
@@ -26,7 +26,7 @@ ui_init(){
   if command -v dialog >/dev/null 2>&1; then UI=1; return; fi
   if command -v pacman >/dev/null 2>&1 && [[ -t 0 && -t 4 ]]; then
     info "Подготавливаю полноэкранный интерфейс dialog..."
-    pacman -Sy --needed --noconfirm dialog || warn "Не удалось установить dialog; включён текстовый режим."
+    pacman -S --needed --noconfirm dialog || warn "Не удалось установить dialog; включён текстовый режим."
     command -v dialog >/dev/null 2>&1 && UI=1
   fi
 }
@@ -185,7 +185,12 @@ install_system(){
   mount "$ROOT_PART" "$TARGET"
   mount "$EFI_PART" "$TARGET/boot"
   info "Устанавливаю пакеты: ${PACKAGES[*]}"
-  pacstrap -K "$TARGET" "${PACKAGES[@]}"
+  info "Подробный вывод установки пакетов будет показан в окне журнала."
+  if (( UI )); then
+    pacstrap -K "$TARGET" "${PACKAGES[@]}" 2>&1 | tee -a "$LOG" | dialog --clear --backtitle "ARCHINSTALLSUPER  |  УСТАНОВКА ПАКЕТОВ" --title "Установка Arch Linux" --programbox "pacstrap: загрузка и установка пакетов. Это может занять продолжительное время." 20 84 2>&4
+  else
+    pacstrap -K "$TARGET" "${PACKAGES[@]}"
+  fi
   genfstab -U "$TARGET" > "$TARGET/etc/fstab"
   [[ -s $TARGET/etc/fstab ]] || die "Не создан fstab."
 }
