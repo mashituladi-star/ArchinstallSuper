@@ -154,6 +154,7 @@ select_custom_options() {
     local desktop_choice
     local package_line
     local package
+    local -a custom_packages=()
 
     say ""
     say "${BOLD}Кастомная установка — рабочее окружение${RESET}"
