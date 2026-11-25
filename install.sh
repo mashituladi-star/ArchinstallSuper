@@ -31,7 +31,7 @@ check_environment(){
   [[ -d /sys/firmware/efi/efivars ]] || die "Нужна загрузка флешки в режиме UEFI."
   [[ -f /etc/arch-release && -d /run/archiso ]] || die "Нужна live-среда официального Arch ISO."
   [[ $(uname -m) == x86_64 ]] || die "Поддерживается только x86_64."
-  for c in lsblk sgdisk wipefs mkfs.fat mkfs.ext4 pacstrap genfstab arch-chroot bootctl blkid partprobe udevadm; do need "$c"; done
+  for c in lsblk sgdisk wipefs mkfs.fat mkfs.ext4 pacstrap genfstab arch-chroot bootctl blkid partprobe udevadm curl awk grep sed readlink findmnt; do need "$c"; done
   info "UEFI и live-среда проверены."
 }
 check_network(){
@@ -80,6 +80,15 @@ select_disk(){
   read -r -p 'Полный путь к диску (например /dev/nvme0n1): ' candidate
   [[ -b $candidate && $(lsblk -dnro TYPE "$candidate") == disk ]] || die "Укажи целый диск."
   DISK=$(readlink -f "$candidate")
+  disk_bytes=$(lsblk -bndo SIZE "$DISK")
+  (( disk_bytes >= 24 * 1024 * 1024 * 1024 )) || die "Диск меньше 24 GiB. Требуется минимум 24 GiB."
+  live_source=$(findmnt -nro SOURCE /run/archiso/bootmnt 2>/dev/null || true)
+  if [[ -n $live_source && -b $live_source ]]; then
+    live_parent=$(lsblk -nro PKNAME "$live_source" 2>/dev/null || true)
+    [[ -n $live_parent ]] && live_source="/dev/$live_parent"
+    live_source=$(readlink -f "$live_source")
+    [[ $DISK != "$live_source" ]] || die "Нельзя устанавливать на диск, с которого запущена live-система."
+  fi
   if lsblk -nrpo MOUNTPOINT "$DISK" | grep -q .; then die "Есть смонтированные разделы выбранного диска."; fi
   printf '\nВСЕ ДАННЫЕ НА %s БУДУТ УДАЛЕНЫ.\n' "$DISK"
   read -r -p "Введи ERASE $DISK для подтверждения: " answer
@@ -94,13 +103,16 @@ system_settings(){
   [[ -e /usr/share/zoneinfo/$TIMEZONE ]] || die "Неизвестный часовой пояс."
   read -r -p 'Локаль [en_US.UTF-8]: ' value; LOCALE=${value:-en_US.UTF-8}
   [[ $LOCALE =~ ^[a-zA-Z_]+\.UTF-8$ ]] || die "Неверный формат локали."
+  grep -Eq "^#?${LOCALE}[[:space:]]+UTF-8$" /etc/locale.gen || die "Локаль $LOCALE отсутствует в /etc/locale.gen."
   read -r -p 'Раскладка [us]: ' value; KEYMAP=${value:-us}
+  [[ $KEYMAP =~ ^[a-zA-Z0-9_-]+$ ]] || die "Недопустимое имя раскладки."
+  find /usr/share/kbd/keymaps -type f -name "${KEYMAP}.map*" -print -quit 2>/dev/null | grep -q . || die "Раскладка $KEYMAP не найдена в live-системе."
   read -r -s -p 'Пароль root: ' ROOT_PASSWORD; printf '\n'
   read -r -s -p 'Повтори пароль root: ' value; printf '\n'
-  [[ -n $ROOT_PASSWORD && $ROOT_PASSWORD == "$value" ]] || die "Пароли root не совпадают."
+  [[ -n $ROOT_PASSWORD && $ROOT_PASSWORD == "$value" && $ROOT_PASSWORD != *:* ]] || die "Пароли root не совпадают."
   read -r -s -p "Пароль $USERNAME: " USER_PASSWORD; printf '\n'
   read -r -s -p 'Повтори пароль пользователя: ' value; printf '\n'
-  [[ -n $USER_PASSWORD && $USER_PASSWORD == "$value" ]] || die "Пароли пользователя не совпадают."
+  [[ -n $USER_PASSWORD && $USER_PASSWORD == "$value" && $USER_PASSWORD != *:* ]] || die "Пароли пользователя не совпадают."
 }
 partition_disk(){
   info "Создаю GPT, EFI 1 GiB и корневой раздел."
