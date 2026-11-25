@@ -13,4 +13,5 @@ grep -q 'curl awk grep sed readlink findmnt' "$ROOT/install.sh"
 grep -q 'dialog --clear' "$ROOT/install.sh"
 grep -q 'ui_password' "$ROOT/install.sh"
 grep -q 'Рабочее окружение' "$ROOT/install.sh"
+grep -q -- '--programbox' "$ROOT/install.sh"
 printf 'Standalone UEFI installer checks passed.\n'
