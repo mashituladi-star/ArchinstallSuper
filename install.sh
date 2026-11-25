@@ -2,12 +2,13 @@
 # ArchinstallSuper — самостоятельный UEFI-установщик Arch Linux.
 set -Eeuo pipefail
 umask 077
-VERSION=0.5.0
+VERSION=0.6.0
 TARGET=/mnt
 LOG=/var/log/archinstallsuper.log
 MODE=minimal
 DESKTOP=
 DISK=
+FS_TYPE=ext4
 HOSTNAME=archlinux
 USERNAME=
 TIMEZONE=Europe/Prague
@@ -122,6 +123,15 @@ select_mode(){
   grep -q AuthenticAMD /proc/cpuinfo && PACKAGES+=(amd-ucode)
   info "Профиль $MODE; окружение ${DESKTOP:-консоль}."
 }
+select_filesystem(){
+  choice=$(ui_menu "Файловая система" "Выбери формат корневого раздела." 13 72 2 1 "ext4 · простая и надёжная" 2 "Btrfs · снимки и сжатие zstd")
+  case "$choice" in
+    1) FS_TYPE=ext4 ;;
+    2) need mkfs.btrfs; FS_TYPE=btrfs; PACKAGES+=(btrfs-progs) ;;
+    *) die "Неверный выбор файловой системы." ;;
+  esac
+  info "Файловая система: $FS_TYPE"
+}
 select_disk(){
   local -a disk_options=()
   while read -r name size model type; do
@@ -180,9 +190,25 @@ partition_disk(){
 }
 install_system(){
   mkfs.fat -F32 "$EFI_PART"
-  mkfs.ext4 -F "$ROOT_PART"
   mkdir -p "$TARGET/boot"
-  mount "$ROOT_PART" "$TARGET"
+  if [[ $FS_TYPE == btrfs ]]; then
+    mkfs.btrfs -f "$ROOT_PART"
+    mount "$ROOT_PART" "$TARGET"
+    btrfs subvolume create "$TARGET/@"
+    btrfs subvolume create "$TARGET/@home"
+    btrfs subvolume create "$TARGET/@var_log"
+    btrfs subvolume create "$TARGET/@snapshots"
+    umount "$TARGET"
+    mount -o noatime,compress=zstd,subvol=@ "$ROOT_PART" "$TARGET"
+    mkdir -p "$TARGET/boot" "$TARGET/home" "$TARGET/var/log" "$TARGET/.snapshots"
+    mount -o noatime,compress=zstd,subvol=@home "$ROOT_PART" "$TARGET/home"
+    mount -o noatime,compress=zstd,subvol=@var_log "$ROOT_PART" "$TARGET/var/log"
+    mount -o noatime,compress=zstd,subvol=@snapshots "$ROOT_PART" "$TARGET/.snapshots"
+  else
+    mkfs.ext4 -F "$ROOT_PART"
+    mount "$ROOT_PART" "$TARGET"
+    mkdir -p "$TARGET/boot"
+  fi
   mount "$EFI_PART" "$TARGET/boot"
   info "Устанавливаю пакеты: ${PACKAGES[*]}"
   info "Подробный вывод установки пакетов будет показан в окне журнала."
@@ -233,6 +259,7 @@ main(){
   ui_init
   select_mode
   select_disk
+  select_filesystem
   system_settings
   ui_msg "Проверь настройки перед запуском:\n\nПрофиль: $MODE\nОкружение: ${DESKTOP:-консоль}\nДиск: $DISK\nHostname: $HOSTNAME\nПользователь: $USERNAME\n\nДанные на выбранном диске будут уничтожены."
   answer=$(ui_input "Финальное подтверждение" "Введи INSTALL для начала установки:")
