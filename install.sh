@@ -2,7 +2,7 @@
 # ArchinstallSuper — самостоятельный UEFI-установщик Arch Linux.
 set -Eeuo pipefail
 umask 077
-VERSION=0.7.0
+VERSION=0.8.0
 TARGET=/mnt
 LOG=/var/log/archinstallsuper.log
 MODE=minimal
@@ -163,7 +163,8 @@ system_settings(){
   USERNAME=$(ui_input "Учётная запись" "Имя обычного пользователя:")
   [[ $USERNAME =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Недопустимое имя пользователя."
   TIMEZONE=$(ui_input "Регион" "Часовой пояс:" "Europe/Prague")
-  [[ -e /usr/share/zoneinfo/$TIMEZONE ]] || die "Неизвестный часовой пояс."
+  [[ $TIMEZONE =~ ^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$ ]] || die "Недопустимый формат часового пояса."
+  [[ -f /usr/share/zoneinfo/$TIMEZONE ]] || die "Неизвестный часовой пояс."
   LOCALE=$(ui_input "Язык системы" "Локаль:" "en_US.UTF-8")
   [[ $LOCALE =~ ^[a-zA-Z_]+\.UTF-8$ ]] || die "Неверный формат локали."
   grep -Eq "^#?${LOCALE}[[:space:]]+UTF-8$" /etc/locale.gen || die "Локаль $LOCALE отсутствует в /etc/locale.gen."
@@ -258,7 +259,27 @@ configure_system(){
   } > "$TARGET/boot/loader/entries/archinstall-super.conf"
   arch-chroot "$TARGET" bootctl --esp-path=/boot install
 }
+usage(){
+  cat <<EOF
+ArchinstallSuper v$VERSION — самостоятельный UEFI-установщик Arch Linux
+
+Использование:
+  bash install.sh          Запустить интерактивную установку
+  bash install.sh --check  Проверить live-среду и подключение к интернету
+  bash install.sh --version
+  bash install.sh --help
+
+ВНИМАНИЕ: обычный запуск полностью стирает выбранный диск.
+EOF
+}
 main(){
+  case "${1:-}" in
+    --help|-h) usage; return 0 ;;
+    --version|-V) printf 'ArchinstallSuper %s\\n' "$VERSION"; return 0 ;;
+    --check) check_environment; check_network; info "Проверка завершена: live-среда UEFI и интернет доступны."; return 0 ;;
+    "") ;;
+    *) usage >&2; die "Неизвестный аргумент: $1" ;;
+  esac
   check_environment
   check_network
   ui_init
