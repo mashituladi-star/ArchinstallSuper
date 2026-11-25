@@ -14,4 +14,7 @@ grep -q 'dialog --clear' "$ROOT/install.sh"
 grep -q 'ui_password' "$ROOT/install.sh"
 grep -q 'Рабочее окружение' "$ROOT/install.sh"
 grep -q -- '--programbox' "$ROOT/install.sh"
+grep -q 'btrfs subvolume create' "$ROOT/install.sh"
+grep -q 'compress=zstd,subvol=@' "$ROOT/install.sh"
+grep -q 'select_filesystem' "$ROOT/install.sh"
 printf 'Standalone UEFI installer checks passed.\n'
