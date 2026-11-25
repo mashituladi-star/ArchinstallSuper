@@ -33,11 +33,14 @@ ui_init(){
 ui_menu(){
   local title=$1 prompt=$2 height=$3 width=$4 list_height=$5
   shift 5
-  if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  UEFI INSTALLER  |  v$VERSION" --title "$title" --menu "$prompt" "$height" "$width" "$list_height" "$@" --output-fd 3 2>&4 || die "Действие отменено."; else
-    printf '\\n%s\\n%s\\n' "$title" "$prompt"
+  if (( UI )); then
+    dialog --clear --backtitle "ARCHINSTALLSUPER  |  UEFI INSTALLER  |  v$VERSION" --title "$title" --menu "$prompt" "$height" "$width" "$list_height" "$@" --output-fd 3 2>&4 || die "Действие отменено."
+  else
+    printf '\n%s\n%s\n' "$title" "$prompt" >&4
     local i=1
-    while (( $# )); do printf '%s) %s — %s\\n' "$i" "$1" "$2"; shift 2; ((i+=1)); done
-    printf 'Выбор: ' >&4; read -r REPLY
+    while (( $# )); do printf '%s) %s — %s\n' "$i" "$1" "$2" >&4; shift 2; ((i+=1)); done
+    printf 'Выбор: ' >&4
+    read -r REPLY
     printf '%s' "$REPLY"
   fi
 }
@@ -47,7 +50,14 @@ ui_input(){
 }
 ui_password(){
   local title=$1 prompt=$2
-  if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "$title" --insecure --passwordbox "$prompt" 9 64 --output-fd 3 2>&4 || die "Действие отменено."; else read -r -s -p "$prompt " REPLY; printf '\\n' >&4; printf '%s' "$REPLY"; fi
+  if (( UI )); then
+    dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "$title" --passwordbox "$prompt" 9 64 --output-fd 3 2>&4 || die "Действие отменено."
+  else
+    printf '%s ' "$prompt" >&4
+    read -r -s REPLY
+    printf '\n' >&4
+    printf '%s' "$REPLY"
+  fi
 }
 ui_msg(){ if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "ArchinstallSuper" --msgbox "$1" 9 70 2>&4; else info "$1"; fi; }
 ui_confirm(){ if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "Подтверждение" --yesno "$1" 11 72 2>&4; else read -r -p "$1 [y/N] " REPLY; [[ $REPLY == y || $REPLY == Y ]]; fi; }
@@ -92,11 +102,10 @@ select_mode(){
         4) DESKTOP=cinnamon; PACKAGES+=(cinnamon lightdm lightdm-gtk-greeter pipewire pipewire-alsa pipewire-pulse wireplumber) ;;
         *) die "Неверное окружение." ;;
       esac
-      read -r -p 'Инструменты разработчика? [д/Н] ' choice
-      case "$choice" in д|да|y|Y) PACKAGES+=(git base-devel python python-pip nodejs npm);; esac
-      read -r -p 'Firefox, VLC, GIMP, LibreOffice? [д/Н] ' choice
-      case "$choice" in д|да|y|Y) PACKAGES+=(firefox vlc gimp libreoffice-fresh);; esac
-      read -r -p 'Дополнительные пакеты (пробел-разделитель, Enter — пропустить): ' -a extra
+      ui_confirm "Добавить инструменты разработки (Git, Python, Node.js, компиляторы)?" && PACKAGES+=(git base-devel python python-pip nodejs npm)
+      ui_confirm "Добавить Firefox, VLC, GIMP и LibreOffice?" && PACKAGES+=(firefox vlc gimp libreoffice-fresh)
+      extra_text=$(ui_input "Дополнительные пакеты" "Имена пакетов через пробел (можно оставить пустым):")
+      read -r -a extra <<< "$extra_text"
       for p in "${extra[@]}"; do [[ $p =~ ^[a-zA-Z0-9@._+-]+$ ]] || die "Недопустимый пакет: $p"; PACKAGES+=("$p"); done
       ;;
     *) die "Выбери режим от 1 до 4." ;;
