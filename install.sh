@@ -2,13 +2,14 @@
 # ArchinstallSuper — самостоятельный UEFI-установщик Arch Linux.
 set -Eeuo pipefail
 umask 077
-VERSION=0.6.0
+VERSION=0.7.0
 TARGET=/mnt
 LOG=/var/log/archinstallsuper.log
 MODE=minimal
 DESKTOP=
 DISK=
 FS_TYPE=ext4
+ZRAM=0
 HOSTNAME=archlinux
 USERNAME=
 TIMEZONE=Europe/Prague
@@ -101,8 +102,7 @@ select_mode(){
     3) MODE=full; DESKTOP=gnome; PACKAGES=(base linux linux-firmware networkmanager sudo nano git firefox gnome gdm pipewire pipewire-alsa pipewire-pulse wireplumber libreoffice-fresh vlc gimp gnome-tweaks flatpak base-devel fastfetch btop htop curl wget zip unzip) ;;
     4)
       MODE=custom; PACKAGES=(base linux linux-firmware networkmanager sudo nano)
-      printf 'Окружение: 0) консоль 1) GNOME 2) KDE 3) XFCE 4) Cinnamon\n'
-      read -r -p 'Выбор [1]: ' choice; choice=${choice:-1}
+      choice=$(ui_menu "Рабочее окружение" "Выбери графическую среду или консоль." 16 72 5 0 "Только консоль" 1 "GNOME" 2 "KDE Plasma" 3 "XFCE" 4 "Cinnamon")
       case "$choice" in
         0) DESKTOP= ;;
         1) DESKTOP=gnome; PACKAGES+=(gnome gdm pipewire pipewire-alsa pipewire-pulse wireplumber) ;;
@@ -122,6 +122,7 @@ select_mode(){
   grep -q GenuineIntel /proc/cpuinfo && PACKAGES+=(intel-ucode)
   grep -q AuthenticAMD /proc/cpuinfo && PACKAGES+=(amd-ucode)
   info "Профиль $MODE; окружение ${DESKTOP:-консоль}."
+  if ui_confirm "Включить zram для сжатого swap в оперативной памяти?"; then ZRAM=1; PACKAGES+=(zram-generator); else ZRAM=0; fi
 }
 select_filesystem(){
   choice=$(ui_menu "Файловая система" "Выбери формат корневого раздела." 13 72 2 1 "ext4 · простая и надёжная" 2 "Btrfs · снимки и сжатие zstd")
@@ -238,6 +239,10 @@ configure_system(){
   chmod 440 "$TARGET/etc/sudoers.d/10-wheel"
   arch-chroot "$TARGET" visudo -cf /etc/sudoers
   arch-chroot "$TARGET" systemctl enable NetworkManager
+  if (( ZRAM )); then
+    mkdir -p "$TARGET/etc/systemd"
+    printf '[zram0]\nzram-size = min(ram / 2, 4096)\ncompression-algorithm = zstd\n' > "$TARGET/etc/systemd/zram-generator.conf"
+  fi
   case "$DESKTOP" in
     gnome) arch-chroot "$TARGET" systemctl enable gdm ;;
     kde) arch-chroot "$TARGET" systemctl enable sddm ;;
@@ -261,7 +266,7 @@ main(){
   select_disk
   select_filesystem
   system_settings
-  ui_msg "Проверь настройки перед запуском:\n\nПрофиль: $MODE\nОкружение: ${DESKTOP:-консоль}\nФайловая система: $FS_TYPE\nДиск: $DISK\nHostname: $HOSTNAME\nПользователь: $USERNAME\n\nДанные на выбранном диске будут уничтожены."
+  ui_msg "Проверь настройки перед запуском:\n\nПрофиль: $MODE\nОкружение: ${DESKTOP:-консоль}\nФайловая система: $FS_TYPE\nZRAM: $ZRAM\nДиск: $DISK\nHostname: $HOSTNAME\nПользователь: $USERNAME\n\nДанные на выбранном диске будут уничтожены."
   answer=$(ui_input "Финальное подтверждение" "Введи INSTALL для начала установки:")
   [[ $answer == INSTALL ]] || die "Отменено до изменения диска."
   partition_disk
