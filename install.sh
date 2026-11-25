@@ -60,7 +60,15 @@ ui_password(){
   fi
 }
 ui_msg(){ if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "ArchinstallSuper" --msgbox "$1" 9 70 2>&4; else info "$1"; fi; }
-ui_confirm(){ if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "Подтверждение" --yesno "$1" 11 72 2>&4; else read -r -p "$1 [y/N] " REPLY; [[ $REPLY == y || $REPLY == Y ]]; fi; }
+ui_confirm(){
+  if (( UI )); then
+    dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "Подтверждение" --yesno "$1" 11 72 2>&4
+  else
+    printf '%s [y/N] ' "$1" >&4
+    read -r REPLY
+    [[ $REPLY == y || $REPLY == Y ]]
+  fi
+}
 info(){ printf '[INFO] %s\n' "$*"; }
 warn(){ printf '[WARN] %s\n' "$*" >&2; }
 die(){ printf '[ERROR] %s\n' "$*" >&2; exit 1; }
