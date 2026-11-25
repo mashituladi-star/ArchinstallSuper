@@ -1,23 +1,31 @@
 #!/usr/bin/env bash
+# Standalone syntax/ShellCheck wrapper. The full test suite is run by
+# tests/run-tests.sh; this file remains useful for editors and CI jobs.
 set -Eeuo pipefail
-ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-bash -n "$ROOT/install.sh"
-shellcheck --severity=warning "$ROOT/install.sh"
-if grep -qE '(^|[[:space:]])archinstall([[:space:]]|$)' "$ROOT/install.sh"; then
-  printf 'Unexpected archinstall invocation found.\n' >&2
-  exit 1
+
+ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$ROOT"
+
+integration_files=(tests/integration/*.sh)
+[[ -e ${integration_files[0]} ]] || integration_files=()
+
+for file in install.sh lib/*.sh tests/*.sh tests/unit/*.sh tests/lib/*.sh \
+    "${integration_files[@]}"; do
+    [[ -f $file ]] || continue
+    bash -n "$file"
+done
+
+if command -v shellcheck >/dev/null 2>&1; then
+    shellcheck --severity=warning -x install.sh lib/*.sh tests/*.sh \
+        tests/unit/*.sh tests/lib/*.sh "${integration_files[@]}"
+else
+    printf 'shellcheck not installed; syntax check only.\n'
 fi
-grep -q 'disk_bytes >= 24' "$ROOT/install.sh"
-grep -q 'Нельзя устанавливать на диск' "$ROOT/install.sh"
-grep -q 'curl awk grep sed readlink findmnt' "$ROOT/install.sh"
-grep -q 'dialog --clear' "$ROOT/install.sh"
-grep -q 'ui_password' "$ROOT/install.sh"
-grep -q 'Рабочее окружение' "$ROOT/install.sh"
-grep -q -- '--programbox' "$ROOT/install.sh"
-grep -q 'btrfs subvolume create' "$ROOT/install.sh"
-grep -q 'compress=zstd,subvol=@' "$ROOT/install.sh"
-grep -q 'select_filesystem' "$ROOT/install.sh"
-grep -q 'zram-generator.conf' "$ROOT/install.sh"
-grep -q 'min(ram / 2, 4096)' "$ROOT/install.sh"
-grep -q 'Рабочее окружение' "$ROOT/install.sh"
+
+if grep -qE '(^[[:space:]]*(sudo[[:space:]]+)?archinstall([[:space:]]|$))|([;&|][[:space:]]*archinstall([[:space:]]|$))' \
+    install.sh lib/*.sh; then
+    printf 'Unexpected archinstall invocation found.\n' >&2
+    exit 1
+fi
+
 printf 'Standalone UEFI installer checks passed.\n'
