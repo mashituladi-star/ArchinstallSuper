@@ -1,0 +1,14 @@
+# Local configuration and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+.DS_Store
+.vscode/
+.idea/
+
+# Build/test output
+coverage/
+dist/
+build/
