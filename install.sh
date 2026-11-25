@@ -51,7 +51,7 @@ ui_password(){
 }
 ui_msg(){ if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "ArchinstallSuper" --msgbox "$1" 9 70 2>&4; else info "$1"; fi; }
 ui_confirm(){ if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "Подтверждение" --yesno "$1" 11 72 2>&4; else read -r -p "$1 [y/N] " REPLY; [[ $REPLY == y || $REPLY == Y ]]; fi; }
-\ninfo(){ printf '[INFO] %s\n' "$*"; }
+info(){ printf '[INFO] %s\n' "$*"; }
 warn(){ printf '[WARN] %s\n' "$*" >&2; }
 die(){ printf '[ERROR] %s\n' "$*" >&2; exit 1; }
 need(){ command -v "$1" >/dev/null 2>&1 || die "Не найдена команда $1"; }
@@ -125,8 +125,8 @@ select_disk(){
     [[ $DISK != "$live_source" ]] || die "Нельзя устанавливать на диск, с которого запущена live-система."
   fi
   if lsblk -nrpo MOUNTPOINT "$DISK" | grep -q .; then die "Есть смонтированные разделы выбранного диска."; fi
-  printf '\nВСЕ ДАННЫЕ НА %s БУДУТ УДАЛЕНЫ.\n' "$DISK"
-  read -r -p "Введи ERASE $DISK для подтверждения: " answer
+  ui_confirm "Все данные на $DISK будут безвозвратно удалены. Продолжить?" || die "Отменено пользователем."
+  answer=$(ui_input "Подтверждение стирания" "Введи точно: ERASE $DISK")
   [[ $answer == "ERASE $DISK" ]] || die "Подтверждение не совпало."
 }
 system_settings(){
@@ -142,11 +142,11 @@ system_settings(){
   KEYMAP=$(ui_input "Клавиатура" "Раскладка:" "us")
   [[ $KEYMAP =~ ^[a-zA-Z0-9_-]+$ ]] || die "Недопустимое имя раскладки."
   find /usr/share/kbd/keymaps -type f -name "${KEYMAP}.map*" -print -quit 2>/dev/null | grep -q . || die "Раскладка $KEYMAP не найдена в live-системе."
-  read -r -s -p 'Пароль root: ' ROOT_PASSWORD; printf '\n'
-  read -r -s -p 'Повтори пароль root: ' value; printf '\n'
+  ROOT_PASSWORD=$(ui_password "Пароль администратора" "Пароль root:")
+  value=$(ui_password "Подтверждение" "Повтори пароль root:")
   [[ -n $ROOT_PASSWORD && $ROOT_PASSWORD == "$value" && $ROOT_PASSWORD != *:* ]] || die "Пароли root не совпадают."
-  read -r -s -p "Пароль $USERNAME: " USER_PASSWORD; printf '\n'
-  read -r -s -p 'Повтори пароль пользователя: ' value; printf '\n'
+  USER_PASSWORD=$(ui_password "Пароль пользователя" "Пароль для $USERNAME:")
+  value=$(ui_password "Подтверждение" "Повтори пароль пользователя:")
   [[ -n $USER_PASSWORD && $USER_PASSWORD == "$value" && $USER_PASSWORD != *:* ]] || die "Пароли пользователя не совпадают."
 }
 partition_disk(){
@@ -212,8 +212,8 @@ main(){
   select_mode
   select_disk
   system_settings
-  printf '\nРежим: %s; диск: %s; hostname: %s; user: %s\n' "$MODE" "$DISK" "$HOSTNAME" "$USERNAME"
-  read -r -p 'Для начала установки введи INSTALL: ' answer
+  ui_msg "Проверь настройки перед запуском:\n\nПрофиль: $MODE\nОкружение: ${DESKTOP:-консоль}\nДиск: $DISK\nHostname: $HOSTNAME\nПользователь: $USERNAME\n\nДанные на выбранном диске будут уничтожены."
+  answer=$(ui_input "Финальное подтверждение" "Введи INSTALL для начала установки:")
   [[ $answer == INSTALL ]] || die "Отменено до изменения диска."
   partition_disk
   install_system
