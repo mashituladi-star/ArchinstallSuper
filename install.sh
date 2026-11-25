@@ -35,7 +35,7 @@ check_environment(){
   info "UEFI и live-среда проверены."
 }
 check_network(){
-  for n in 1 2 3; do
+  for _ in 1 2 3; do
     curl -fsSI --connect-timeout 5 https://archlinux.org/ >/dev/null 2>&1 && { timedatectl set-ntp true >/dev/null 2>&1 || true; return; }
     warn "Нет интернета. Настрой Wi-Fi через iwctl."
     command -v iwctl >/dev/null 2>&1 && iwctl
