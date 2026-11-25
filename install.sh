@@ -261,7 +261,7 @@ main(){
   select_disk
   select_filesystem
   system_settings
-  ui_msg "Проверь настройки перед запуском:\n\nПрофиль: $MODE\nОкружение: ${DESKTOP:-консоль}\nДиск: $DISK\nHostname: $HOSTNAME\nПользователь: $USERNAME\n\nДанные на выбранном диске будут уничтожены."
+  ui_msg "Проверь настройки перед запуском:\n\nПрофиль: $MODE\nОкружение: ${DESKTOP:-консоль}\nФайловая система: $FS_TYPE\nДиск: $DISK\nHostname: $HOSTNAME\nПользователь: $USERNAME\n\nДанные на выбранном диске будут уничтожены."
   answer=$(ui_input "Финальное подтверждение" "Введи INSTALL для начала установки:")
   [[ $answer == INSTALL ]] || die "Отменено до изменения диска."
   partition_disk
