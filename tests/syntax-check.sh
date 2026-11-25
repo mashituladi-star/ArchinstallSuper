@@ -17,4 +17,7 @@ grep -q -- '--programbox' "$ROOT/install.sh"
 grep -q 'btrfs subvolume create' "$ROOT/install.sh"
 grep -q 'compress=zstd,subvol=@' "$ROOT/install.sh"
 grep -q 'select_filesystem' "$ROOT/install.sh"
+grep -q 'zram-generator.conf' "$ROOT/install.sh"
+grep -q 'min(ram / 2, 4096)' "$ROOT/install.sh"
+grep -q 'Рабочее окружение' "$ROOT/install.sh"
 printf 'Standalone UEFI installer checks passed.\n'
