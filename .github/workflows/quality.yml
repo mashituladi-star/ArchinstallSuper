@@ -14,13 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate Bash syntax
-        run: bash -n install.sh
-      - name: Run static safety checks
-        run: bash tests/static-checks.sh
-      - name: ShellCheck
-        uses: ludeeus/action-shellcheck@master
-        with:
-          scandir: .
-          severity: warning
-          format: tty
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+      - name: Full test suite
+        run: bash tests/run-tests.sh
