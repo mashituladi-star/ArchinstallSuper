@@ -275,7 +275,7 @@ EOF
 main(){
   case "${1:-}" in
     --help|-h) usage; return 0 ;;
-    --version|-V) printf 'ArchinstallSuper %s\\n' "$VERSION"; return 0 ;;
+    --version|-V) printf 'ArchinstallSuper %s\n' "$VERSION"; return 0 ;;
     --check) check_environment; check_network; info "Проверка завершена: live-среда UEFI и интернет доступны."; return 0 ;;
     "") ;;
     *) usage >&2; die "Неизвестный аргумент: $1" ;;
