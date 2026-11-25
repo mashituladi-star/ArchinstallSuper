@@ -37,13 +37,13 @@ ui_menu(){
     printf '\\n%s\\n%s\\n' "$title" "$prompt"
     local i=1
     while (( $# )); do printf '%s) %s — %s\\n' "$i" "$1" "$2"; shift 2; ((i+=1)); done
-    read -r -p 'Выбор: ' REPLY
+    printf 'Выбор: ' >&4; read -r REPLY
     printf '%s' "$REPLY"
   fi
 }
 ui_input(){
   local title=$1 prompt=$2 initial=${3-}
-  if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "$title" --inputbox "$prompt" 9 64 "$initial" --output-fd 3 2>&4 || die "Действие отменено."; else read -r -p "$prompt " REPLY; printf '%s' "${REPLY:-$initial}"; fi
+  if (( UI )); then dialog --clear --backtitle "ARCHINSTALLSUPER  |  v$VERSION" --title "$title" --inputbox "$prompt" 9 64 "$initial" --output-fd 3 2>&4 || die "Действие отменено."; else printf '%s ' "$prompt" >&4; read -r REPLY; printf '%s' "${REPLY:-$initial}"; fi
 }
 ui_password(){
   local title=$1 prompt=$2
@@ -75,9 +75,7 @@ check_network(){
   die "Для установки нужен интернет."
 }
 select_mode(){
-  printf '\nArchinstallSuper %s — режимы установки\n' "$VERSION"
-  printf '1) Минимальная — консоль\n2) Базовая — GNOME\n3) Полная — GNOME и приложения\n4) Кастомная\n'
-  read -r -p 'Выбор [1-4]: ' choice
+  choice=$(ui_menu "Выбор профиля" "Выбери состав системы. Графические профили используют GNOME." 16 76 4 1 "Минимальная · консоль" 2 "Базовая · GNOME" 3 "Полная · GNOME + приложения" 4 "Кастомная настройка")
   case "$choice" in
     1) MODE=minimal; PACKAGES=(base linux linux-firmware networkmanager sudo nano) ;;
     2) MODE=basic; DESKTOP=gnome; PACKAGES=(base linux linux-firmware networkmanager sudo nano git firefox gnome gdm pipewire pipewire-alsa pipewire-pulse wireplumber) ;;
