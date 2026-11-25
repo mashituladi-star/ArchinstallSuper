@@ -10,4 +10,7 @@ fi
 grep -q 'disk_bytes >= 24' "$ROOT/install.sh"
 grep -q 'Нельзя устанавливать на диск' "$ROOT/install.sh"
 grep -q 'curl awk grep sed readlink findmnt' "$ROOT/install.sh"
+grep -q 'dialog --clear' "$ROOT/install.sh"
+grep -q 'ui_password' "$ROOT/install.sh"
+grep -q 'Рабочее окружение' "$ROOT/install.sh"
 printf 'Standalone UEFI installer checks passed.\n'
