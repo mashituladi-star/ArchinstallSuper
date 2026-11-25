@@ -12,7 +12,8 @@
 pacman -Sy --needed git
 git clone https://github.com/mashituladi-star/ArchinstallSuper.git
 cd ArchinstallSuper
-bash install.sh
+bash install.sh --check   # предварительная проверка UEFI и интернета
+bash install.sh          # запуск мастера
 ```
 
 ## Режимы
@@ -38,11 +39,22 @@ bash install.sh
 
 Поддерживается только x86_64 UEFI. Для первого запуска требуется интернет.
 
-## Проверка
+## Проверка качества
+
+В репозитории настроен GitHub Actions workflow `Installer quality`: при push и pull request он проверяет синтаксис Bash, выполняет статические проверки критичных защитных условий и запускает ShellCheck.
+
+Локальная проверка:
 
 ```bash
 bash -n install.sh
-shellcheck --severity=warning install.sh
+bash tests/static-checks.sh
+shellcheck --severity=warning install.sh tests/static-checks.sh
 ```
 
-Лицензия MIT.
+Перед установкой можно выполнить безопасную предварительную проверку (она не размечает диски и не устанавливает систему):
+
+```bash
+bash install.sh --check
+```
+
+Текущая версия: **0.8.0**. Лицензия MIT.
