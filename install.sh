@@ -132,6 +132,57 @@ ensure_archinstall() {
     command -v archinstall >/dev/null 2>&1 || die "Команда archinstall всё ещё недоступна после проверки пакета."
 }
 
+select_desktop_profile() {
+    local answer
+    local profile_choice="GNOME"
+    local config_path="/tmp/archinstallsuper-profile.json"
+
+    say ""
+    say "${BOLD}Выбор окружения рабочего стола${RESET}"
+    say "  [x] GNOME — выбран по умолчанию (рекомендуемый профиль)"
+    say "  [ ] Без предустановленного окружения — выбрать позже в archinstall"
+    say ""
+    read -r -p "Установить GNOME по умолчанию? [Д/н] " answer || answer="д"
+
+    case "${answer,,}" in
+        н|нет|n|no)
+            profile_choice=""
+            info "GNOME отключён. Окружение можно выбрать вручную в archinstall."
+            ;;
+        *)
+            info "GNOME выбран. В archinstall остальные параметры останутся интерактивными."
+            ;;
+    esac
+
+    if ! command -v python >/dev/null 2>&1; then
+        die "Python необходим для создания JSON конфигурации archinstall."
+    fi
+
+    if [[ -n "$profile_choice" ]]; then
+        python - "$config_path" <<'PY'
+import json
+import sys
+
+config_path = sys.argv[1]
+config = {
+    "profile_config": {
+        "profile": {
+            "main": "Desktop",
+            "details": ["GNOME"]
+        },
+        "greeter": "gdm",
+        "gfx_driver": "All open-source (default)"
+    }
+}
+with open(config_path, "w", encoding="utf-8") as handle:
+    json.dump(config, handle, ensure_ascii=False, indent=2)
+PY
+        PROFILE_CONFIG="$config_path"
+    else
+        PROFILE_CONFIG=""
+    fi
+}
+
 show_disk_warning() {
     say ""
     warn "Перед запуском проверь список дисков. Пока ничего не будет стираться."
@@ -151,7 +202,12 @@ run_installer() {
     case "${answer,,}" in
         ""|д|да|y|yes)
             info "Передаю управление официальному archinstall..."
-            if archinstall; then
+            if [[ -n "${PROFILE_CONFIG:-}" ]]; then
+                archinstall --config "$PROFILE_CONFIG"
+            else
+                archinstall
+            fi
+            if [[ $? -eq 0 ]]; then
                 success "archinstall завершил работу."
                 say "Проверь итоговое сообщение установщика и его журнал: /var/log/archinstall/install.log"
                 say "Перезагрузка не выполняется автоматически. Когда убедишься, что установка завершена, выполни: reboot"
@@ -175,6 +231,7 @@ main() {
     connect_network
     sync_clock
     ensure_archinstall
+    select_desktop_profile
     show_disk_warning
     run_installer
 }
