@@ -2,7 +2,7 @@
 # ArchinstallSuper — самостоятельный UEFI-установщик Arch Linux.
 set -Eeuo pipefail
 umask 077
-VERSION=0.8.0
+VERSION=0.9.0
 TARGET=/mnt
 LOG=/var/log/archinstallsuper.log
 MODE=minimal
@@ -212,6 +212,8 @@ install_system(){
     mkdir -p "$TARGET/boot"
   fi
   mount "$EFI_PART" "$TARGET/boot"
+  mountpoint -q "$TARGET/boot" || die "EFI-раздел не смонтирован в $TARGET/boot."
+  [[ $(blkid -s TYPE -o value "$EFI_PART") == vfat ]] || die "EFI-раздел должен иметь FAT32 (vfat)."
   info "Устанавливаю пакеты: ${PACKAGES[*]}"
   info "Подробный вывод установки пакетов будет показан в окне журнала."
   if (( UI )); then
@@ -255,7 +257,12 @@ configure_system(){
     printf 'title Arch Linux (ArchinstallSuper)\nlinux /vmlinuz-linux\n'
     [[ -f $TARGET/boot/intel-ucode.img ]] && printf 'initrd /intel-ucode.img\n'
     [[ -f $TARGET/boot/amd-ucode.img ]] && printf 'initrd /amd-ucode.img\n'
-    printf 'initrd /initramfs-linux.img\noptions root=UUID=%s rw\n' "$root_uuid"
+    printf 'initrd /initramfs-linux.img\n'
+    if [[ $FS_TYPE == btrfs ]]; then
+      printf 'options root=UUID=%s rw rootflags=subvol=@,compress=zstd\n' "$root_uuid"
+    else
+      printf 'options root=UUID=%s rw\n' "$root_uuid"
+    fi
   } > "$TARGET/boot/loader/entries/archinstall-super.conf"
   arch-chroot "$TARGET" bootctl --esp-path=/boot install
 }
