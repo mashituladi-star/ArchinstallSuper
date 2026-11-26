@@ -8,7 +8,7 @@ test_version() {
     local output
     output=$(bash "$ROOT/install.sh" --version)
     assert_contains "$output" "ArchinstallSuper" "product name"
-    assert_contains "$output" "0.10.0" "version"
+    assert_contains "$output" "0.11.0" "version"
 }
 
 test_help() {

@@ -14,6 +14,8 @@ source "$ROOT/lib/security.sh"
 source "$ROOT/lib/storage.sh"
 # shellcheck source=../../lib/hardware.sh
 source "$ROOT/lib/hardware.sh"
+# shellcheck source=../../lib/ui.sh
+source "$ROOT/lib/ui.sh"
 # shellcheck source=../../lib/workflow.sh
 source "$ROOT/lib/workflow.sh"
 

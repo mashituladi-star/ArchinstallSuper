@@ -274,12 +274,19 @@ workflow_final_confirm() {
 }
 
 workflow_collect() {
+    ui_step_set 2
     workflow_select_mode
+    ui_step_set 3
     workflow_select_kernel
+    ui_step_set 4
     workflow_select_filesystem
+    ui_step_set 5
     storage_select_disk
+    ui_step_set 6
     workflow_system_settings
+    ui_step_set 7
     workflow_select_encryption
+    ui_step_set 8
     if ui_confirm "Включить zram (сжатый swap в оперативной памяти)?"; then
         ZRAM=1
     else
@@ -292,9 +299,11 @@ workflow_collect() {
         warn "Secure Boot включён, а systemd-boot не подписывается. Загрузка может потребовать отключения Secure Boot или ручного добавления ключей."
     fi
     validate_all
+    ui_step_set 9
 }
 
 workflow_execute() {
+    ui_step_set 10
     # shellcheck disable=SC2034  # used across modules
     INSTALL_STARTED=1
     plugin_hook pre_install

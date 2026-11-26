@@ -19,13 +19,17 @@
 ```text
 install.sh
   parse_args
-  core_init                  umask, журнал, state/temp dirs
+  AS_UI_EARLY=1              если доступен полноэкранный TUI
+  core_init                  umask, журнал, state/temp dirs; вывод сразу в лог
   recovery_init              trap EXIT/INT/TERM/HUP
   [--check] -> workflow_check_only
 
+  ui_init                    tui, dialog или plain
+  ui_steps_init              список этапов для боковой панели
+  ui_splash                  окно запуска: установка или выход
+
   validate_environment       root, live Arch, x86_64, UEFI, пустой /mnt, команды
   recovery_lock              flock, один экземпляр
-  ui_init                    dialog или plain
   network_ensure             интернет, Wi-Fi при необходимости
   install_refresh_packages   pacman -Sy, archlinux-keyring
   hw_detect / hw_show_screen
@@ -75,10 +79,25 @@ state `0700`, temp `0700`), затем ставит `umask 022`, чтобы фа
 
 ### `lib/ui.sh`
 
-Единый интерфейс. В режиме `dialog` возвращаемые значения читаются через
+Диспетчер интерфейса. Поддерживает три бэкенда: `tui` (по умолчанию),
+`dialog` и `plain`. В режиме `dialog` возвращаемые значения читаются через
 `dialog --stdout` и командную подстановку; сам интерфейс рисуется в fd 4
 (исходный stderr), чтобы не смешиваться с захваченным stdout. В режиме `plain`
 меню нумеруются, пароль читается с `-s`.
+
+`ui_steps_init`/`ui_step_set` передают боковой панели список этапов и текущую
+позицию. `ui_run_logged` запускает долгую команду и показывает её вывод на
+экране выполнения; дочерний процесс получает `AS_UI_CHILD=1`, чтобы его
+`die` не открывал вложенный экран. Подробности: [UI.md](UI.md).
+
+### `lib/tui.py`
+
+Полноэкранный интерфейс на Python/curses. Запускается отдельным процессом на
+каждый экран. Рисует на stdout (терминал), результат пишет в fd 3, живой вывод
+команды читает из fd 5. Поддерживает UTF-8 и ASCII, 256 и 8 цветов, меню,
+ввод, пароль, подтверждение, сообщение, текст, выполнение команды и прогресс.
+Не хранит состояние между экранами, поэтому сбой одного экрана не ломает
+терминал.
 
 ### `lib/hardware.sh`
 

@@ -4,7 +4,7 @@
 set -Eeuo pipefail
 umask 077
 
-VERSION=0.10.0
+VERSION=0.11.0
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 # Defaults for the interactive workflow. They are intentionally explicit:
@@ -119,6 +119,18 @@ parse_args() {
 
 main() {
     parse_args "$@"
+
+    # Detect the full-screen path before core_init so the first screen appears
+    # without a flash of shell output. The same test is repeated in ui_init.
+    if [[ ${AS_PLAIN:-0} != 1 && ${CHECK_ONLY:-0} != 1 && -t 0 && -t 2 ]] &&
+        command -v python3 >/dev/null 2>&1 &&
+        python3 -c 'import curses' >/dev/null 2>&1; then
+        AS_UI_EARLY=1
+    else
+        AS_UI_EARLY=0
+    fi
+    export AS_UI_EARLY
+
     core_init
     recovery_init
 
@@ -127,13 +139,30 @@ main() {
         return $?
     fi
 
+    # Open the interface before any validation. From this point the terminal
+    # shows only the installer window; diagnostics go to the log file.
+    ui_init
+    ui_steps_init
+
+    local splash_choice
+    if ! splash_choice=$(ui_splash); then
+        printf 'Не удалось запустить полноэкранный интерфейс. Запусти: bash install.sh --plain\n' >&4
+        exit 1
+    fi
+    if [[ $splash_choice != install ]]; then
+        info "Выход по выбору пользователя."
+        return 0
+    fi
+
     validate_environment
     recovery_lock
-    # Initialise the UI before the network screen: the offline flow also uses
-    # ui_menu/ui_error and should honour dialog or --plain consistently.
-    ui_init
+
+    ui_step_set 0
     network_ensure
-    install_refresh_packages
+    ui_step_set 1
+    if ! ui_run_logged "Подготовка пакетов" install_refresh_packages; then
+        die "Не удалось подготовить базу пакетов live-среды."
+    fi
     hw_detect
     hw_show_screen
     plugin_load_all
@@ -142,7 +171,8 @@ main() {
     workflow_show_summary
 
     if ((DRY_RUN)); then
-        info "Dry-run завершён: диск не изменялся."
+        ui_msg "Dry-run завершён: диск не изменялся.\n\nВыбранные параметры показаны на предыдущем экране." \
+            "Dry-run"
         return 0
     fi
 

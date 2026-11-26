@@ -15,6 +15,10 @@ for file in install.sh lib/*.sh tests/*.sh tests/unit/*.sh tests/lib/*.sh \
     bash -n "$file"
 done
 
+if command -v python3 >/dev/null 2>&1; then
+    python3 -m py_compile lib/tui.py tests/lib/tui_pty.py
+fi
+
 if command -v shellcheck >/dev/null 2>&1; then
     shellcheck --severity=warning -x install.sh lib/*.sh tests/*.sh \
         tests/unit/*.sh tests/lib/*.sh "${integration_files[@]}"

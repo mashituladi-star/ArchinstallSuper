@@ -57,6 +57,15 @@ recovery_cleanup() {
     else
         recovery_safe_unmount
     fi
+
+    # A pre-install failure has already been shown by die(). If the disk was
+    # touched, show a final screen with the recovery steps as well.
+    if ((rc != 0 && INSTALL_STARTED)) && [[ ${AS_UI_CHILD:-0} != 1 ]] &&
+        declare -F ui_error >/dev/null 2>&1 && [[ ${UI_MODE:-plain} != plain ]]; then
+        ui_error "Установка прервана (код $rc).\n\nЖурнал: $LOG_FILE\n\nПроверь lsblk. Если диск уже изменён, не запускай установку вслепую: закрой LUKS (cryptsetup close ${LUKS_NAME:-cryptroot}), размонтируй $TARGET (umount -R $TARGET) и перезагрузись в live-среду." \
+            "Установка прервана"
+    fi
+
     if [[ -n ${TEMP_DIR:-} && -d $TEMP_DIR ]]; then
         rm -rf -- "$TEMP_DIR" 2>/dev/null || true
     fi

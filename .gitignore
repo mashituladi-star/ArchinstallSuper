@@ -17,3 +17,7 @@ build/
 *.qcow2
 *.iso
 OVMF_VARS*.fd
+
+# Python bytecode from TUI tests
+__pycache__/
+*.pyc

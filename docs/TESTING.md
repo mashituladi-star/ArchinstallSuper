@@ -7,7 +7,9 @@ bash tests/run-tests.sh
 ```
 
 Запускать можно обычным пользователем: тесты не трогают реальные диски и не
-вызывают `pacstrap`, `sgdisk`, `mkfs`, `cryptsetup`, `bootctl`.
+вызывают `pacstrap`, `sgdisk`, `mkfs`, `cryptsetup`, `bootctl`. Полный набор
+сейчас состоит из **14 шагов**; TUI-тесты используют псевдотерминал (PTY) и
+не требуют графической среды.
 
 Для ShellCheck:
 
@@ -30,7 +32,8 @@ shellcheck --severity=warning -x install.sh lib/*.sh tests/*.sh \
 | `tests/unit/config-test.sh` | `/etc/hosts`, locale/vconsole, zram, sudoers, display manager |
 | `tests/unit/security-test.sh` | политика паролей, LUKS-аргументы, очистка переменных |
 | `tests/unit/recovery-test.sh` | очистка до/во время установки, закрытие LUKS, размонтирование |
-| `tests/unit/ui-test.sh` | меню, подтверждение, ввод, пароль |
+| `tests/unit/ui-test.sh` | меню, подтверждение, ввод, пароль (plain-бэкенд) |
+| `tests/unit/tui-test.sh` | полноэкранный TUI в настоящем PTY: меню, боковая панель, Esc, ввод, маскировка пароля, подтверждения, сообщения, вывод команды, splash, ASCII, `TERM=linux` |
 | `tests/unit/cli-test.sh` | `--version`, `--help`, неизвестный аргумент, отсутствие `archinstall`, синтаксис |
 | `tests/unit/workflow-test.sh` | состав пакетов, предупреждение о стирании, порядок этапов |
 
@@ -43,6 +46,8 @@ shellcheck --severity=warning -x install.sh lib/*.sh tests/*.sh \
   `storage_is_block_device`, `arch-chroot`.
 - `tests/lib/harness.sh` содержит утверждения (`assert_eq`, `assert_contains`,
   `assert_fails`, ...) и счётчик тестов.
+- `tests/lib/tui_pty.py` запускает `lib/tui.py` в PTY, отправляет клавиши и
+  проверяет как отрисованный текст, так и значение, возвращённое через fd 3.
 
 ## CI
 

@@ -42,7 +42,7 @@ for file in install.sh lib/*.sh tests/*.sh tests/unit/*.sh tests/lib/*.sh \
     bash -n "$file" || fail "syntax error in $file"
 done
 
-require_pattern 'VERSION=0.10.0' install.sh 'version'
+require_pattern 'VERSION=0.11.0' install.sh 'version'
 require_pattern '--check' install.sh 'preflight CLI'
 require_pattern '--dry-run' install.sh 'dry-run CLI'
 require_pattern 'flock -n' lib/recovery.sh 'single-instance lock'
@@ -65,6 +65,17 @@ require_pattern 'zram-generator' lib/workflow.sh 'zram'
 require_pattern 'intel-ucode' lib/hardware.sh 'Intel microcode'
 require_pattern 'amd-ucode' lib/hardware.sh 'AMD microcode'
 require_pattern 'chpasswd' lib/security.sh 'password setting'
+require_pattern 'AS_UI_EARLY' install.sh 'silent full-screen launch'
+require_pattern 'core_silence_console' lib/core.sh 'console silencing'
+require_pattern 'lib/tui.py' lib/ui.sh 'modern TUI helper'
+require_pattern 'AS_UI_CHILD=1' lib/ui.sh 'child output isolation'
+require_pattern 'ui_splash' install.sh 'splash screen'
+require_pattern 'ui_step_set 10' lib/workflow.sh 'installation progress step'
+
+if command -v python3 >/dev/null 2>&1; then
+    python3 -m py_compile lib/tui.py tests/lib/tui_pty.py ||
+        fail 'Python syntax error in TUI helper'
+fi
 
 reject_pattern '--output-fd 3' lib/ui.sh 'dialog must use --stdout for return values'
 reject_pattern 'archinstall ' install.sh 'no archinstall invocation in entrypoint'

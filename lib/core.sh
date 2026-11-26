@@ -8,7 +8,7 @@
 AS_CORE_LOADED=1
 
 : "${AS_TEST:=0}"
-: "${AS_VERSION:=0.10.0}"
+: "${AS_VERSION:=0.11.0}"
 : "${VERSION:=$AS_VERSION}"
 : "${TARGET:=/mnt}"
 : "${LOG_FILE:=/var/log/archinstallsuper.log}"
@@ -41,6 +41,13 @@ error() { _core_log ERROR "$*" >&2; }
 
 die() {
     error "$*"
+    # In full-screen mode the message must be visible in the interface, not
+    # only in the log. Child processes started by ui_run_logged set
+    # AS_UI_CHILD=1: their parent will show the error after the pipeline ends.
+    if [[ ${AS_UI_CHILD:-0} != 1 ]] && declare -F ui_error >/dev/null 2>&1 &&
+        [[ ${UI_MODE:-plain} != plain ]]; then
+        ui_error "$*"
+    fi
     exit 1
 }
 
@@ -59,13 +66,14 @@ core_init() {
     umask 077
     exec 3>&1 4>&2
 
+    # Do all fallible setup before redirecting stdout, so an early failure is
+    # still visible on the terminal instead of disappearing into a log file.
     if [[ $AS_LOG_TO_FILE == 1 ]]; then
         local log_dir
         log_dir=$(dirname -- "$LOG_FILE")
         mkdir -p -- "$log_dir" || die "Не удалось создать каталог журнала: $log_dir"
         : >"$LOG_FILE" || die "Не удалось открыть журнал: $LOG_FILE"
         chmod 600 -- "$LOG_FILE" 2>/dev/null || true
-        exec > >(tee -a "$LOG_FILE") 2>&1
     fi
 
     mkdir -p -- "$STATE_DIR" || die "Не удалось создать каталог состояния: $STATE_DIR"
@@ -76,6 +84,15 @@ core_init() {
             die "Не удалось создать временный каталог."
     fi
 
+    if [[ $AS_LOG_TO_FILE == 1 ]]; then
+        if [[ ${AS_UI_EARLY:-0} == 1 ]]; then
+            # The TUI takes over the terminal immediately; keep it clean.
+            exec >>"$LOG_FILE" 2>&1
+        else
+            exec > >(tee -a "$LOG_FILE") 2>&1
+        fi
+    fi
+
     info "ArchinstallSuper $VERSION"
     info "Журнал: $LOG_FILE"
     debug "TARGET=$TARGET STATE_DIR=$STATE_DIR"
@@ -84,6 +101,15 @@ core_init() {
     # umask for the rest of the run so files written into the target system
     # (/etc/fstab, loader entries, ...) get their usual world-readable modes.
     umask 022
+}
+
+# After the full-screen UI is ready, stop mirroring log lines to the terminal.
+# fd 3 and fd 4 still point at the terminal, so the TUI can draw there; normal
+# output goes only to the log file from this point on.
+core_silence_console() {
+    [[ ${AS_LOG_TO_FILE:-1} == 1 ]] || return 0
+    [[ -n ${LOG_FILE:-} ]] || return 0
+    exec >>"$LOG_FILE" 2>&1
 }
 
 core_need() {
