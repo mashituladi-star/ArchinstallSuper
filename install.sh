@@ -26,11 +26,19 @@ USER_PASSWORD=
 LUKS_PASSWORD=
 CHECK_ONLY=0
 DRY_RUN=0
+# Unattended installation support.
+CONFIG_FILE=
+AUTO_MODE=0
+CONFIG_WIFI_SSID=
+CONFIG_WIFI_PASSWORD=
+CONFIG_REBOOT=1
 
 # shellcheck source=lib/core.sh
 source "$SCRIPT_DIR/lib/core.sh"
 # shellcheck source=lib/ui.sh
 source "$SCRIPT_DIR/lib/ui.sh"
+# shellcheck source=lib/configfile.sh
+source "$SCRIPT_DIR/lib/configfile.sh"
 # shellcheck source=lib/hardware.sh
 source "$SCRIPT_DIR/lib/hardware.sh"
 # shellcheck source=lib/validate.sh
@@ -65,6 +73,9 @@ Usage:
   bash install.sh --plain      Do not use the full-screen UI; plain text only
   bash install.sh --debug      Verbose debug output
   bash install.sh --log FILE   Write the log to FILE
+  bash install.sh --config FILE   Use a configuration file for unattended install
+  bash install.sh --auto        Run unattended installation (requires --config)
+  bash install.sh --example-config   Print a sample configuration file
   bash install.sh --version
   bash install.sh --help
 
@@ -107,6 +118,21 @@ parse_args() {
                 }
                 LOG_FILE=$1
                 ;;
+            --config)
+                shift
+                [[ $# -gt 0 ]] || {
+                    error "--config requires a file path."
+                    exit 2
+                }
+                CONFIG_FILE=$1
+                ;;
+            --auto)
+                AUTO_MODE=1
+                ;;
+            --example-config)
+                configfile_sample
+                exit 0
+                ;;
             *)
                 usage >&2
                 error "Unknown argument: $1"
@@ -119,6 +145,12 @@ parse_args() {
 
 main() {
     parse_args "$@"
+
+    # Unattended mode requires a configuration file.
+    if ((AUTO_MODE)) && [[ -z $CONFIG_FILE ]]; then
+        error "--auto requires --config FILE."
+        exit 2
+    fi
 
     # Detect the full-screen path before core_init so the first screen appears
     # without a flash of shell output. The same test is repeated in ui_init.
@@ -137,6 +169,34 @@ main() {
     if ((CHECK_ONLY)); then
         workflow_check_only
         return $?
+    fi
+
+    # Load configuration file if provided (unattended or as defaults).
+    if [[ -n $CONFIG_FILE ]]; then
+        configfile_load "$CONFIG_FILE"
+    fi
+
+    # Fully unattended installation: no UI, no interactive prompts.
+    if ((AUTO_MODE)); then
+        configfile_validate_required
+        validate_environment
+        recovery_lock
+
+        info "Unattended installation started."
+        ui_step_set 0
+        network_ensure_auto
+        ui_step_set 1
+        if ! install_refresh_packages; then
+            die "Could not prepare the live package database."
+        fi
+        hw_detect
+        plugin_load_all
+        validate_all
+        ui_step_set 2
+        storage_validate_selected_disk
+        workflow_execute_auto
+        workflow_after_success_auto
+        return 0
     fi
 
     # Open the interface before any validation. From this point the terminal

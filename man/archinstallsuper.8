@@ -1,0 +1,138 @@
+.\" Man page for archinstallsuper(8)
+.\" Generated for ArchinstallSuper v0.11.0
+.TH ARCHINSTALLSUPER 8 "2026-11-26" "ArchinstallSuper 0.11.0" "System Administration"
+.SH NAME
+archinstallsuper \- standalone UEFI installer for Arch Linux
+.SH SYNOPSIS
+.B archinstallsuper
+[\fIoptions\fR]
+.br
+.B archinstallsuper \fI--config\fR \fIFILE\fR \fI--auto\fR
+.br
+.B archinstallsuper \fI--example-config\fR
+.SH DESCRIPTION
+.B ArchinstallSuper
+is a standalone, full-screen UEFI installer for Arch Linux. It does not
+depend on or use the official \fBarchinstall\fR package. Instead it uses
+standard Arch tooling (\fBpacstrap\fR, \fBpacman\fR, \fBsgdisk\fR,
+\fBmkfs\fR, \fBsystemd-boot\fR, \fBmkinitcpio\fR, \fBcryptsetup\fR) to
+perform a safe, confirmed installation.
+
+The installer supports three run modes:
+
+.TP
+\fBInteractive\fR (default)
+A modern full-screen TUI (Python/curses) guides the user through profile,
+kernel, filesystem, disk, system settings, encryption and final confirmation.
+\fBdialog\fR and plain-text backends are available as fallbacks.
+
+.TP
+\fBUnattended\fR (\fB--config\fR \fIFILE\fR \fB--auto\fR)
+Reads settings from a configuration file and performs the installation without
+any interactive prompts. Suitable for automated deployments and CI.
+
+.TP
+\fBCheck-only\fR (\fB--check\fR)
+Validates the live environment (UEFI, x86_64, network, required commands)
+without modifying any disk.
+
+.SH OPTIONS
+.TP
+\fB--check\fR
+Run preflight validation only (UEFI, live ISO, network). Exit 0 on success.
+
+.TP
+\fB--dry-run\fR
+Collect settings, show the plan and validate packages, but do not modify any
+disk.
+
+.TP
+\fB--plain\fR
+Do not use the full-screen TUI; run in plain text mode.
+
+.TP
+\fB--debug\fR
+Enable verbose debug output in the log.
+
+.TP
+\fB--log\fR \fIFILE\fR
+Write the installation log to \fIFILE\fR instead of the default
+\fI/var/log/archinstallsuper.log\fR.
+
+.TP
+\fB--config\fR \fIFILE\fR
+Use \fIFILE\fR as an unattended installation configuration file. Implies
+loading values as defaults in interactive mode.
+
+.TP
+\fB--auto\fR
+Run unattended installation. Requires \fB--config\fR. No UI is shown.
+
+.TP
+\fB--example-config\fR
+Print a sample configuration file to stdout and exit.
+
+.TP
+\fB--version\fR
+Print version and exit.
+
+.TP
+\fB--help\fR,\ \fB-h\fR
+Show usage information and exit.
+.SH CONFIGURATION FILE
+An unattended configuration file uses INI-like syntax:
+
+.TP
+\fB[system]\fR
+hostname, username, timezone, locale, keymap, root_policy (password|locked), zram (true|false)
+
+.TP
+\fB[install]\fR
+mode (minimal|basic|full|custom), desktop (gnome|kde|xfce|cinnamon), kernel (linux|linux-lts|linux-zen|linux-hardened), filesystem (ext4|btrfs|xfs), encryption (true|false), luks_password, root_password, user_password, efi_size_mib
+
+.TP
+\fB[disk]\fR
+device (e.g. /dev/nvme0n1), efi_size_mib
+
+.TP
+\fB[packages]\fR
+extra (space-separated package names)
+
+.TP
+\fB[network]\fR
+wifi_ssid, wifi_password
+
+Passwords are read from the file but never written to the log.
+.SH FILES
+.TP
+\fI/var/log/archinstallsuper.log\fR
+Installation log (mode 0600).
+.TP
+\fI/run/archinstallsuper/installer.lock\fR
+Single-instance lock to prevent concurrent runs.
+.SH SECURITY
+.PP
+The installer never writes passwords to the log or command line.
+\fBchpasswd\fR receives passwords through a pipe; \fBcryptsetup\fR reads the
+passphrase from stdin via \fB--key-file -\fR. Password variables are unset
+immediately after use.
+.PP
+Only x86_64 UEFI is supported; Legacy BIOS/CSM and MBR are not. A normal run
+erases the selected disk completely after two explicit confirmations
+(\fBERASE <disk>\fR and \fBINSTALL\fR).
+.SH EXAMPLES
+.TP
+Interactive installation:
+.B archinstallsuper
+.TP
+Unattended installation from a config file:
+.B archinstallsuper --config myconfig.conf --auto
+.TP
+Check the live environment before installing:
+.B archinstallsuper --check
+.SH SEE ALSO
+.BR install (1),\ pacstrap (8),\ systemd-boot (1),\ cryptsetup (8)
+.SH BUGS
+Report issues at <https://github.com/mashituladi-star/ArchinstallSuper/issues>.
+.SH AUTHOR
+ArchinstallSuper project maintainers.

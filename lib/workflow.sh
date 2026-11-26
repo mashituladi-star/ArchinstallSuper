@@ -346,3 +346,41 @@ workflow_check_only() {
     fi
     return "$rc"
 }
+
+# Non-interactive execution for unattended mode. Skips all UI screens and
+# uses values already loaded from the configuration file.
+workflow_execute_auto() {
+    # shellcheck disable=SC2034  # used across modules
+    INSTALL_STARTED=1
+    plugin_hook pre_install
+    storage_partition_disk
+    storage_make_filesystems
+    storage_mount_target
+    install_pacstrap
+    storage_generate_fstab
+    config_apply_all
+    boot_apply_all
+    install_verify
+    install_copy_log
+    plugin_hook post_install
+    if ! storage_unmount_target; then
+        die "Could not safely unmount the target system."
+    fi
+    # shellcheck disable=SC2034  # completion flag
+    INSTALL_COMPLETE=1
+    plugin_hook pre_reboot
+}
+
+workflow_after_success_auto() {
+    local text
+    text=$(install_success_text)
+    printf '%s\n' "$text"
+    local reboot=${CONFIG_REBOOT:-1}
+    if ((reboot)); then
+        info "Rebooting in 10 seconds. Press Ctrl-C to cancel."
+        sleep 10 || true
+        reboot
+    else
+        info "Reboot manually after removing the installation media."
+    fi
+}

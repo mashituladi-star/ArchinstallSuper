@@ -1,0 +1,66 @@
+.\" Man page for install(1) — ArchinstallSuper entrypoint
+.TH INSTALL 1 "2026-11-26" "ArchinstallSuper 0.11.0" "User Commands"
+.SH NAME
+install \- ArchinstallSuper interactive UEFI installer entrypoint
+.SH SYNOPSIS
+.B install.sh
+[\fIoptions\fR]
+.SH DESCRIPTION
+.B install.sh
+is the entrypoint for ArchinstallSuper, a standalone UEFI installer for
+Arch Linux. It parses command-line arguments, sources the library modules in
+\fBlib/\fR and drives the installation workflow.
+
+Without options it starts the interactive full-screen TUI installer.
+.SH OPTIONS
+.TP
+\fB--check\fR
+Run preflight validation only (UEFI, live ISO, network).
+
+.TP
+\fB--dry-run\fR
+Collect settings, show the plan and validate packages, but do not modify any
+disk.
+
+.TP
+\fB--plain\fR
+Do not use the full-screen TUI; run in plain text mode.
+
+.TP
+\fB--debug\fR
+Enable verbose debug output in the log.
+
+.TP
+\fB--log\fR \fIFILE\fR
+Write the installation log to \fIFILE\fR.
+
+.TP
+\fB--config\fR \fIFILE\fR
+Use \fIFILE\fR as an unattended installation configuration file.
+
+.TP
+\fB--auto\fR
+Run unattended installation (requires \fB--config\fR). No UI is shown.
+
+.TP
+\fB--example-config\fR
+Print a sample configuration file to stdout and exit.
+
+.TP
+\fB--version\fR,\ \fB-V\fR
+Print version and exit.
+
+.TP
+\fB--help\fR,\ \fB-h\fR
+Show usage information and exit.
+.SH FILES
+.TP
+\fI/var/log/archinstallsuper.log\fR
+Installation log.
+.TP
+\fI/run/archinstallsuper/installer.lock\fR
+Single-instance lock.
+.SH SEE ALSO
+.BR archinstallsuper (8),\ pacstrap (8)
+.SH BUGS
+Report issues at <https://github.com/mashituladi-star/ArchinstallSuper/issues>.

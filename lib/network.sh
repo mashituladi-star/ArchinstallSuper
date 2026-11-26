@@ -180,3 +180,58 @@ network_check() {
     fi
     return "$failed"
 }
+
+# Non-interactive network setup for unattended mode. Uses CONFIG_WIFI_SSID and
+# CONFIG_WIFI_PASSWORD from the configuration file if the initial check fails.
+network_ensure_auto() {
+    local attempt
+    for ((attempt = 1; attempt <= 5; attempt++)); do
+        if network_online; then
+            timedatectl set-ntp true >/dev/null 2>&1 || true
+            info "Internet is available."
+            return 0
+        fi
+        if [[ -n ${CONFIG_WIFI_SSID:-} ]]; then
+            info "Configuring Wi-Fi: ${CONFIG_WIFI_SSID}."
+            if network_connect_wifi_auto; then
+                if network_online; then
+                    timedatectl set-ntp true >/dev/null 2>&1 || true
+                    info "Internet is available."
+                    return 0
+                fi
+            fi
+        fi
+        ((attempt < 5)) && sleep 3
+    done
+    die "Unattended installation: no internet access and Wi-Fi could not be configured."
+}
+
+# Connect to Wi-Fi without UI prompts. Reads credentials from configuration.
+network_connect_wifi_auto() {
+    local -a devices=()
+    local device
+    while IFS= read -r device; do
+        [[ -n $device ]] && devices+=("$device")
+    done < <(network_wifi_devices)
+    ((${#devices[@]} > 0)) || {
+        warn "No Wi-Fi adapter found."
+        return 1
+    }
+    device=${devices[0]}
+
+    command -v iwctl >/dev/null 2>&1 || {
+        warn "iwctl not found."
+        return 1
+    }
+
+    info "Scanning Wi-Fi on $device."
+    iwctl station "$device" scan >/dev/null 2>&1 || true
+    sleep 3
+
+    if ! printf '%s\n' "${CONFIG_WIFI_PASSWORD:-}" | iwctl station "$device" connect "${CONFIG_WIFI_SSID}" >/dev/null 2>&1; then
+        warn "Could not connect to ${CONFIG_WIFI_SSID}."
+        return 1
+    fi
+    sleep 5
+    return 0
+}

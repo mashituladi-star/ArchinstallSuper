@@ -68,18 +68,46 @@ bash install.sh           # интерактивный мастер
 ## Параметры командной строки
 
 ```text
-bash install.sh              интерактивная установка
-bash install.sh --check      только проверка UEFI, live-среды и сети
-bash install.sh --dry-run    собрать настройки и показать план без изменений
-bash install.sh --plain      не использовать dialog
-bash install.sh --debug      подробный отладочный вывод
-bash install.sh --log FILE   писать журнал в FILE
+bash install.sh                   интерактивная установка
+bash install.sh --check           только проверка UEFI, live-среды и сети
+bash install.sh --dry-run         собрать настройки и показать план без изменений
+bash install.sh --plain           не использовать dialog, только текст
+bash install.sh --debug           подробный отладочный вывод
+bash install.sh --log FILE        писать журнал в FILE
+bash install.sh --config FILE     использовать файл конфигурации
+bash install.sh --auto            неинтерактивная установка (требует --config)
+bash install.sh --example-config  напечатать пример конфига и выйти
 bash install.sh --version
 bash install.sh --help
 ```
 
-`--dry-run` всё равно выполняет интерактивный опрос и проверку пакетов, но не
-размечает диск и не устанавливает систему.
+`--dry-run` still runs the interactive questionnaire and package validation,
+but does not partition the disk or install the system.
+
+### Unattended installation (--config / --auto)
+
+For automation, save settings to an INI-like configuration file and run without
+any UI:
+
+```bash
+bash install.sh --example-config > myconfig.conf
+# Edit myconfig.conf: set disk, hostname, passwords, etc.
+chmod 600 myconfig.conf
+bash install.sh --config myconfig.conf --auto
+```
+
+The configuration file supports sections `[system]`, `[install]`, `[disk]`,
+`[packages]`, `[network]`. Passwords are never written to the log. See
+`docs/QUICKSTART.md` and `man archinstallsuper(8)` for details.
+
+### Packaging
+
+```bash
+makepkg -si
+```
+
+Builds and installs the `archinstallsuper` package with man pages and an
+example config at `/usr/share/archinstallsuper/examples/`.
 
 ## Интерфейс
 
