@@ -11,23 +11,23 @@ AS_VALIDATE_LOADED=1
 : "${REQUIRED_BYTES:=0}"
 
 validate_efi() {
-    core_is_uefi || die "Система загружена не в UEFI-режиме. Legacy/CSM не поддерживается."
+    core_is_uefi || die "The system was not booted in UEFI mode. Legacy/CSM is not supported."
     [[ -d /sys/firmware/efi/efivars ]] ||
-        die "EFI-переменные недоступны: отсутствует /sys/firmware/efi/efivars."
+        die "EFI variables are unavailable: /sys/firmware/efi/efivars is missing."
     if ! mountpoint -q /sys/firmware/efi/efivars 2>/dev/null; then
-        warn "efivarfs не смонтирован как отдельная файловая система."
+        warn "efivarfs is not mounted as a separate filesystem."
     fi
     [[ -w /sys/firmware/efi/efivars ]] ||
-        die "EFI-переменные доступны только для чтения. Загрузитесь в UEFI без ограничений NVRAM."
+        die "EFI variables are read-only. Boot in UEFI mode without NVRAM restrictions."
 }
 
 validate_target() {
-    [[ -d $TARGET ]] || die "Целевой каталог не существует: $TARGET"
+    [[ -d $TARGET ]] || die "Target directory does not exist: $TARGET"
     if mountpoint -q "$TARGET" 2>/dev/null; then
-        die "$TARGET уже смонтирован. Размонтируй его и запусти установщик снова."
+        die "$TARGET is already mounted. Unmount it and start the installer again."
     fi
     if [[ -n $(find "$TARGET" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null) ]]; then
-        die "$TARGET не пуст. Это может быть предыдущая установка; очисти каталог вручную."
+        die "$TARGET is not empty. This may be a previous installation; clean the directory manually."
     fi
 }
 
@@ -46,7 +46,7 @@ validate_storage_commands() {
         ext4) ;;
         btrfs) core_need mkfs.btrfs ;;
         xfs) core_need mkfs.xfs ;;
-        *) die "Неподдерживаемая файловая система: ${FS_TYPE:-}" ;;
+        *) die "Unsupported filesystem: ${FS_TYPE:-}" ;;
     esac
     if [[ ${ENCRYPT:-0} == 1 ]]; then
         core_need cryptsetup
@@ -55,8 +55,8 @@ validate_storage_commands() {
 
 validate_environment() {
     core_require_root
-    core_is_live_arch || die "Нужна live-среда официального Arch Linux ISO."
-    [[ $(uname -m) == x86_64 ]] || die "Поддерживается только x86_64."
+    core_is_live_arch || die "The official Arch Linux ISO live environment is required."
+    [[ $(uname -m) == x86_64 ]] || die "Only x86_64 is supported."
     validate_efi
     validate_target
     validate_base_commands
@@ -66,7 +66,7 @@ validate_hostname() {
     local hostname=${1:-}
     VALIDATION_MESSAGE=
     if [[ ! $hostname =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?$ ]]; then
-        VALIDATION_MESSAGE="Имя компьютера должно содержать 1–63 символа: буквы, цифры и дефис, без дефиса в конце."
+        VALIDATION_MESSAGE="Hostname must be 1-63 characters: letters, digits and hyphens, without a trailing hyphen."
         return 1
     fi
     return 0
@@ -76,11 +76,11 @@ validate_username() {
     local username=${1:-}
     VALIDATION_MESSAGE=
     if [[ ! $username =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
-        VALIDATION_MESSAGE="Имя пользователя: строчная буква или _, затем строчные буквы, цифры, _ или - (до 32 символов)."
+        VALIDATION_MESSAGE="User name: a lowercase letter or _, then lowercase letters, digits, _ or - (up to 32 characters)."
         return 1
     fi
     if [[ $username == root ]]; then
-        VALIDATION_MESSAGE="Нельзя создавать пользователя root повторно."
+        VALIDATION_MESSAGE="The root user cannot be created again."
         return 1
     fi
     return 0
@@ -90,11 +90,11 @@ validate_timezone() {
     local timezone=${1:-}
     VALIDATION_MESSAGE=
     if [[ ! $timezone =~ ^[A-Za-z0-9_+-]+(/[A-Za-z0-9_+-]+)*$ ]]; then
-        VALIDATION_MESSAGE="Неверный формат часового пояса."
+        VALIDATION_MESSAGE="Invalid timezone format."
         return 1
     fi
     if [[ ! -f /usr/share/zoneinfo/$timezone ]]; then
-        VALIDATION_MESSAGE="Часовой пояс не найден: $timezone"
+        VALIDATION_MESSAGE="Timezone not found: $timezone"
         return 1
     fi
     return 0
@@ -104,12 +104,12 @@ validate_locale() {
     local locale=${1:-}
     VALIDATION_MESSAGE=
     if [[ ! $locale =~ ^[A-Za-z_]+\.UTF-8$ ]]; then
-        VALIDATION_MESSAGE="Локаль должна иметь вид xx_XX.UTF-8."
+        VALIDATION_MESSAGE="Locale must have the form xx_XX.UTF-8."
         return 1
     fi
     local escaped=${locale//./\\.}
     if ! grep -Eq "^#?${escaped}[[:space:]]+UTF-8[[:space:]]*$" /etc/locale.gen 2>/dev/null; then
-        VALIDATION_MESSAGE="Локаль $locale отсутствует в /etc/locale.gen live-системы."
+        VALIDATION_MESSAGE="Locale $locale is missing from the live /etc/locale.gen."
         return 1
     fi
     return 0
@@ -119,11 +119,11 @@ validate_keymap() {
     local keymap=${1:-}
     VALIDATION_MESSAGE=
     if [[ ! $keymap =~ ^[A-Za-z0-9_-]+$ ]]; then
-        VALIDATION_MESSAGE="Недопустимое имя раскладки."
+        VALIDATION_MESSAGE="Invalid keyboard layout name."
         return 1
     fi
     if ! find /usr/share/kbd/keymaps -type f -name "${keymap}.map*" -print -quit 2>/dev/null | grep -q .; then
-        VALIDATION_MESSAGE="Раскладка $keymap не найдена в live-системе."
+        VALIDATION_MESSAGE="Keyboard layout $keymap was not found in the live environment."
         return 1
     fi
     return 0
@@ -135,28 +135,28 @@ validate_password() {
     local hostname=${3:-}
     VALIDATION_MESSAGE=
     if ((${#password} < 8)); then
-        VALIDATION_MESSAGE="Пароль должен содержать не менее 8 символов."
+        VALIDATION_MESSAGE="Password must contain at least 8 characters."
         return 1
     fi
     if [[ $password == *:* ]]; then
-        VALIDATION_MESSAGE="Пароль не должен содержать двоеточие (ограничение chpasswd)."
+        VALIDATION_MESSAGE="Password must not contain a colon (chpasswd limitation)."
         return 1
     fi
     if [[ $password == *$'\n'* || $password == *$'\r'* ]]; then
-        VALIDATION_MESSAGE="Пароль не должен содержать переводы строк."
+        VALIDATION_MESSAGE="Password must not contain newlines."
         return 1
     fi
     if [[ -n $username && $password == "$username" ]]; then
-        VALIDATION_MESSAGE="Пароль не должен совпадать с именем пользователя."
+        VALIDATION_MESSAGE="Password must not match the user name."
         return 1
     fi
     if [[ -n $hostname && $password == "$hostname" ]]; then
-        VALIDATION_MESSAGE="Пароль не должен совпадать с именем компьютера."
+        VALIDATION_MESSAGE="Password must not match the hostname."
         return 1
     fi
     case ${password,,} in
         password|password123|12345678|123456789|qwerty123|archlinux)
-            VALIDATION_MESSAGE="Этот пароль слишком распространён."
+            VALIDATION_MESSAGE="This password is too common."
             return 1
             ;;
     esac
@@ -167,7 +167,7 @@ validate_package_name() {
     local package=${1:-}
     VALIDATION_MESSAGE=
     if ! core_validate_package_name "$package"; then
-        VALIDATION_MESSAGE="Недопустимое имя пакета: $package"
+        VALIDATION_MESSAGE="Invalid package name: $package"
         return 1
     fi
     return 0
@@ -182,7 +182,7 @@ validate_package_available() {
 }
 
 validate_packages() {
-    ((${#PACKAGES[@]} > 0)) || die "Список пакетов пуст."
+    ((${#PACKAGES[@]} > 0)) || die "The package list is empty."
     local -a missing=()
     local package
     for package in "${PACKAGES[@]}"; do
@@ -192,7 +192,7 @@ validate_packages() {
         fi
     done
     if ((${#missing[@]})); then
-        die "Пакеты не найдены в репозиториях: $(core_join_by ', ' "${missing[@]}"). Проверь имена и доступ к зеркалам."
+        die "Packages not found in the repositories: $(core_join_by ', ' "${missing[@]}"). Check the names and mirror access."
     fi
 }
 
@@ -227,28 +227,28 @@ validate_package_size() {
         total=$((total + bytes))
     done
     REQUIRED_BYTES=$total
-    info "Оценка устанавливаемых данных: $(core_human_size "$total")."
+    info "Estimated installed size: $(core_human_size "$total")."
 }
 
 validate_disk_capacity() {
-    [[ -n ${DISK_BYTES:-} ]] || die "Не выбран диск."
+    [[ -n ${DISK_BYTES:-} ]] || die "No disk selected."
     local reserve=$((2 * 1024 * 1024 * 1024))
     local available=$((DISK_BYTES - EFI_SIZE_MIB * 1024 * 1024 - reserve))
     if ((available < REQUIRED_BYTES)); then
-        die "Недостаточно места: нужно примерно $(core_human_size "$REQUIRED_BYTES"), доступно $(core_human_size "$available") после резерва."
+        die "Not enough space: about $(core_human_size "$REQUIRED_BYTES") required, $(core_human_size "$available") available after reserve."
     fi
     if [[ ${MODE:-minimal} != minimal ]] && ((DISK_BYTES < 30 * 1024 * 1024 * 1024)); then
-        warn "Для графического профиля рекомендуется диск не менее 30 GiB."
+        warn "A disk of at least 30 GiB is recommended for a graphical profile."
     fi
 }
 
 validate_layout() {
-    [[ -n ${DISK:-} ]] || die "Целевой диск не выбран."
-    [[ -b $DISK ]] || die "Целевой диск не является блочным устройством: $DISK"
-    ((EFI_SIZE_MIB >= 512)) || die "EFI-раздел слишком мал."
+    [[ -n ${DISK:-} ]] || die "Target disk not selected."
+    [[ -b $DISK ]] || die "Target disk is not a block device: $DISK"
+    ((EFI_SIZE_MIB >= 512)) || die "EFI partition is too small."
     local root_bytes=$((DISK_BYTES - EFI_SIZE_MIB * 1024 * 1024))
     ((root_bytes >= 16 * 1024 * 1024 * 1024)) ||
-        die "Корневой раздел получится меньше 16 GiB."
+        die "The root partition would be smaller than 16 GiB."
 }
 
 # Match a Btrfs root subvolume flag in either the mount-option form used by
@@ -261,44 +261,44 @@ validate_btrfs_root_flag() {
 
 validate_fstab() {
     local fstab=$1
-    [[ -s $fstab ]] || die "fstab пуст или не создан: $fstab"
-    grep -Eq '^[^#].*[[:space:]]/[[:space:]]' "$fstab" || die "В fstab нет записи для /."
-    grep -Eq '^[^#].*[[:space:]]/boot[[:space:]]' "$fstab" || die "В fstab нет записи для /boot."
+    [[ -s $fstab ]] || die "fstab is empty or missing: $fstab"
+    grep -Eq '^[^#].*[[:space:]]/[[:space:]]' "$fstab" || die "fstab has no entry for /."
+    grep -Eq '^[^#].*[[:space:]]/boot[[:space:]]' "$fstab" || die "fstab has no entry for /boot."
     if grep -Eq '^(tmpfs|overlay|proc|sysfs|devtmpfs|none)[[:space:]]+/[[:space:]]' "$fstab"; then
-        die "Корневая файловая система в fstab не является постоянным устройством."
+        die "The root filesystem in fstab is not a persistent device."
     fi
     if [[ ${FS_TYPE:-} == btrfs ]]; then
         validate_btrfs_root_flag "$fstab" ||
-            die "В fstab отсутствует корневой подтом Btrfs @."
+            die "The Btrfs root subvolume @ is missing from fstab."
     fi
     if command -v findmnt >/dev/null 2>&1; then
         if ! findmnt --verify --tab-file "$fstab" >/dev/null 2>&1; then
-            warn "findmnt --verify сообщил о замечаниях к fstab; проверь журнал."
+            warn "findmnt --verify reported fstab warnings; check the log."
         fi
     fi
 }
 
 validate_install_result() {
     local kernel=${KERNEL:-linux}
-    [[ -x $TARGET/bin/bash ]] || die "В целевой системе нет /bin/bash."
-    [[ -s $TARGET/etc/fstab ]] || die "Не создан /etc/fstab."
-    [[ -f $TARGET/boot/vmlinuz-$kernel ]] || die "Не найден /boot/vmlinuz-$kernel."
-    [[ -f $TARGET/boot/initramfs-$kernel.img ]] || die "Не найден initramfs для ядра $kernel."
+    [[ -x $TARGET/bin/bash ]] || die "The target system has no /bin/bash."
+    [[ -s $TARGET/etc/fstab ]] || die "/etc/fstab was not created."
+    [[ -f $TARGET/boot/vmlinuz-$kernel ]] || die "/boot/vmlinuz-$kernel was not found."
+    [[ -f $TARGET/boot/initramfs-$kernel.img ]] || die "initramfs for kernel $kernel was not found."
     [[ -f $TARGET/boot/loader/entries/archinstall-super.conf ]] ||
-        die "Не создана загрузочная запись systemd-boot."
+        die "The systemd-boot entry was not created."
     [[ -f $TARGET/boot/EFI/systemd/systemd-bootx64.efi ]] ||
-        die "systemd-boot не установлен в EFI-раздел."
+        die "systemd-boot is not installed in the EFI partition."
     arch-chroot "$TARGET" id "$USERNAME" >/dev/null 2>&1 ||
-        die "Пользователь $USERNAME не создан."
+        die "User $USERNAME was not created."
     arch-chroot "$TARGET" systemctl is-enabled NetworkManager >/dev/null 2>&1 ||
-        die "NetworkManager не включён в целевой системе."
+        die "NetworkManager is not enabled in the target system."
     if [[ ${ENCRYPT:-0} == 1 ]]; then
         grep -q "cryptdevice=UUID=${LUKS_UUID:-}" "$TARGET/boot/loader/entries/archinstall-super.conf" ||
-            die "В загрузочной записи отсутствует cryptdevice."
+            die "cryptdevice is missing from the boot entry."
     fi
     if [[ ${FS_TYPE:-} == btrfs ]]; then
         validate_btrfs_root_flag "$TARGET/boot/loader/entries/archinstall-super.conf" ||
-            die "В загрузочной записи отсутствует rootflags=subvol=@."
+            die "rootflags=subvol=@ is missing from the boot entry."
     fi
 }
 
@@ -310,24 +310,24 @@ validate_config() {
     validate_keymap "$KEYMAP" || die "$VALIDATION_MESSAGE"
     case ${ROOT_POLICY:-password} in
         password)
-            validate_password "$ROOT_PASSWORD" root "$HOSTNAME" || die "Пароль root: $VALIDATION_MESSAGE"
+            validate_password "$ROOT_PASSWORD" root "$HOSTNAME" || die "Root password: $VALIDATION_MESSAGE"
             ;;
         locked) ;;
-        *) die "Неизвестная политика root: $ROOT_POLICY" ;;
+        *) die "Unknown root policy: $ROOT_POLICY" ;;
     esac
     validate_password "$USER_PASSWORD" "$USERNAME" "$HOSTNAME" ||
-        die "Пароль пользователя: $VALIDATION_MESSAGE"
+        die "User password: $VALIDATION_MESSAGE"
     if [[ ${ENCRYPT:-0} == 1 ]]; then
         validate_password "$LUKS_PASSWORD" "$USERNAME" "$HOSTNAME" ||
-            die "Пароль шифрования: $VALIDATION_MESSAGE"
+            die "Encryption password: $VALIDATION_MESSAGE"
     fi
     case ${KERNEL:-linux} in
         linux|linux-lts|linux-zen|linux-hardened) ;;
-        *) die "Неподдерживаемое ядро: ${KERNEL:-}" ;;
+        *) die "Unsupported kernel: ${KERNEL:-}" ;;
     esac
     case ${FS_TYPE:-ext4} in
         ext4|btrfs|xfs) ;;
-        *) die "Неподдерживаемая файловая система: ${FS_TYPE:-}" ;;
+        *) die "Unsupported filesystem: ${FS_TYPE:-}" ;;
     esac
 }
 

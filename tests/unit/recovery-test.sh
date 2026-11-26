@@ -27,7 +27,7 @@ test_failure_before_install() {
     LUKS_OPENED=0
     INSTALL_PHASE=
     recovery_cleanup 1
-    assert_file_contains "$log" "Диск не изменялся" "no disk changes yet"
+    assert_file_contains "$log" "disk was not changed" "no disk changes yet"
     assert_not_contains "$(cat "$log")" "umount" "must not unmount before install"
 }
 

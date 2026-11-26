@@ -68,8 +68,8 @@ ui_plain_confirm() {
         return 1
     fi
     case ${answer,,} in
-        y|yes|д|да) return 0 ;;
-        n|no|н|нет) return 1 ;;
+        y|yes) return 0 ;;
+        n|no) return 1 ;;
         '') [[ $default == yes ]] ;;
         *) return 1 ;;
     esac
@@ -103,13 +103,13 @@ ui_init() {
     fi
 
     if [[ -t 0 && -t 4 ]] && command -v pacman >/dev/null 2>&1; then
-        if ui_plain_confirm "dialog не установлен. Установить его для полноэкранного интерфейса?" yes; then
+        if ui_plain_confirm "dialog is not installed. Install it for the full-screen interface?" yes; then
             if pacman -S --needed --noconfirm dialog >&4 2>&4; then
                 UI_MODE=dialog
                 core_silence_console
                 return 0
             fi
-            warn "Не удалось установить dialog; используется текстовый интерфейс."
+            warn "Could not install dialog; using the plain text interface."
         fi
     fi
     UI_MODE=plain
@@ -135,17 +135,17 @@ ui_tui() {
 
 ui_steps_init() {
     UI_STEPS=(
-        "Сеть"
-        "Железо"
-        "Профиль"
-        "Ядро"
-        "Файлы"
-        "Диск"
-        "Система"
-        "Шифрование"
-        "Пакеты"
-        "Итог"
-        "Установка"
+        "Network"
+        "Hardware"
+        "Profile"
+        "Kernel"
+        "Filesystem"
+        "Disk"
+        "System"
+        "Encryption"
+        "Packages"
+        "Summary"
+        "Install"
     )
     UI_STEP_INDEX=-1
     AS_UI_STEPS=$(IFS='|'; printf '%s' "${UI_STEPS[*]}")
@@ -165,24 +165,24 @@ ui_splash() {
     if ui_is_tui; then
         choice=$(ui_tui splash --app-version "$AS_UI_VERSION" \
             --steps "$AS_UI_STEPS" --step-index "$AS_UI_STEP_INDEX" \
-            --item "install|Начать установку|Настроить и установить Arch Linux" \
-            --item "exit|Выход|Закрыть установщик") || return 1
+            --item "install|Start installation|Configure and install Arch Linux" \
+            --item "exit|Exit|Close installer") || return 1
         printf '%s' "$choice"
         return 0
     fi
     if ui_is_dialog; then
         choice=$(dialog --stdout --clear --backtitle "$UI_BACKTITLE" \
             --title "ArchinstallSuper $AS_UI_VERSION" \
-            --menu "Архитектура: UEFI x86_64\nУстановщик не использует archinstall.\n\nВыберите действие:" \
+            --menu "Architecture: UEFI x86_64\nThe installer does not use archinstall.\n\nChoose an action:" \
             18 76 2 \
-            "install" "Начать установку" \
-            "exit" "Выход" 2>&4) || return 1
+            "install" "Start installation" \
+            "exit" "Exit" 2>&4) || return 1
         printf '%s' "$choice"
         return 0
     fi
     ui_plain_header "ArchinstallSuper $AS_UI_VERSION"
-    printf '  UEFI x86_64 · установщик без archinstall\n\n' >&4
-    printf '  1) Начать установку\n  2) Выход\n\nВыбор [1]: ' >&4
+    printf '  UEFI x86_64 · installer without archinstall\n\n' >&4
+    printf '  1) Start installation\n  2) Exit\n\nChoice [1]: ' >&4
     local answer=
     IFS= read -r answer || return 1
     case ${answer:-1} in
@@ -198,8 +198,8 @@ ui_menu() {
     local title=$1
     local prompt=$2
     shift 2
-    (($# % 2 == 0)) || die "ui_menu: нечётное число аргументов."
-    (($# > 0)) || die "ui_menu: пустое меню."
+    (($# % 2 == 0)) || die "ui_menu: odd number of arguments."
+    (($# > 0)) || die "ui_menu: empty menu."
 
     local -a tags=()
     local -a descriptions=()
@@ -243,7 +243,7 @@ ui_menu() {
         for index in "${!tags[@]}"; do
             printf '  %2d) %-14s %s\n' "$((index + 1))" "${tags[$index]}" "${descriptions[$index]}" >&4
         done
-        printf '\nВведите номер (q — отмена): ' >&4
+        printf '\nEnter a number (q to cancel): ' >&4
         if ! IFS= read -r answer; then
             return 1
         fi
@@ -254,7 +254,7 @@ ui_menu() {
             printf '%s' "${tags[$((answer - 1))]}"
             return 0
         fi
-        printf '%sНеверный выбор.%s\n' "$UI_C_RED" "$UI_C_RESET" >&4
+        printf '%sInvalid choice.%s\n' "$UI_C_RED" "$UI_C_RESET" >&4
     done
 }
 
@@ -296,7 +296,7 @@ ui_password() {
     if ui_is_tui; then
         local value
         value=$(ui_tui password --title "$title" --prompt "$prompt" \
-            --label "Пароль" --steps "$AS_UI_STEPS" --step-index "$AS_UI_STEP_INDEX" \
+            --label "Password" --steps "$AS_UI_STEPS" --step-index "$AS_UI_STEP_INDEX" \
             --app-version "$AS_UI_VERSION") || return 1
         printf '%s' "$value"
         return 0
@@ -323,13 +323,13 @@ ui_password() {
 ui_confirm() {
     local prompt=$1
     if ui_is_tui; then
-        ui_tui confirm --title "Подтверждение" --prompt "$prompt" \
+        ui_tui confirm --title "Confirmation" --prompt "$prompt" \
             --steps "$AS_UI_STEPS" --step-index "$AS_UI_STEP_INDEX" \
             --app-version "$AS_UI_VERSION" || return 1
         return 0
     fi
     if ui_is_dialog; then
-        if dialog --clear --backtitle "$UI_BACKTITLE" --title "Подтверждение" \
+        if dialog --clear --backtitle "$UI_BACKTITLE" --title "Confirmation" \
             --yesno "$prompt" 12 76 2>&4; then
             return 0
         fi
@@ -359,7 +359,7 @@ ui_msg() {
 
 ui_error() {
     local message=$1
-    local title=${2:-Ошибка}
+    local title=${2:-Error}
     if ui_is_tui; then
         ui_tui error --title "$title" --message "$message" --kind error \
             --steps "$AS_UI_STEPS" --step-index "$AS_UI_STEP_INDEX" \
@@ -380,7 +380,7 @@ ui_show_text() {
     local title=$1
     local file=$2
     if [[ ! -f $file ]]; then
-        ui_error "Файл для просмотра не найден: $file"
+        ui_error "File not found: $file"
         return 1
     fi
     if ui_is_tui; then
@@ -395,7 +395,7 @@ ui_show_text() {
     else
         ui_plain_header "$title"
         cat -- "$file" >&4
-        printf '\nНажмите Enter для продолжения...' >&4
+        printf '\nPress Enter to continue...' >&4
         IFS= read -r _ || true
     fi
     return 0
@@ -428,7 +428,7 @@ ui_run_logged() {
     if ui_is_tui; then
         AS_UI_CHILD=1 "$@" 2>&1 | tee -a "${LOG_FILE:-/dev/null}" |
             python3 "$AS_UI_DIR/tui.py" program --title "$title" \
-                --prompt "Выполняется: $*" --fd 5 \
+                --prompt "Running: $*" --fd 5 \
                 --steps "$AS_UI_STEPS" --step-index "$AS_UI_STEP_INDEX" \
                 --app-version "$AS_UI_VERSION" \
                 5<&0 0<&4 3>&1 1>&4 2>>"${LOG_FILE:-/dev/null}"
@@ -436,11 +436,11 @@ ui_run_logged() {
     elif ui_is_dialog; then
         "$@" 2>&1 | tee -a "$LOG_FILE" |
             dialog --clear --backtitle "$UI_BACKTITLE" --title "$title" \
-                --programbox "Выполняется: $*" 22 84 2>&4
+                --programbox "Running: $*" 22 84 2>&4
         rc=${PIPESTATUS[0]}
     else
         ui_plain_header "$title"
-        printf 'Выполняется: %s\n\n' "$*" >&4
+        printf 'Running: %s\n\n' "$*" >&4
         # stdout already goes through the run log; do not tee a second time.
         "$@" 2>&1
         rc=$?

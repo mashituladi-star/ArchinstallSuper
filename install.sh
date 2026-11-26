@@ -56,23 +56,23 @@ source "$SCRIPT_DIR/lib/workflow.sh"
 
 usage() {
     cat <<EOF
-ArchinstallSuper v$VERSION — самостоятельный UEFI-установщик Arch Linux
+ArchinstallSuper v$VERSION — standalone UEFI installer for Arch Linux
 
-Использование:
-  bash install.sh              Запустить интерактивную установку
-  bash install.sh --check      Проверить UEFI, live-среду и интернет
-  bash install.sh --dry-run    Собрать настройки и показать план без изменений
-  bash install.sh --plain      Не использовать dialog, только текстовый режим
-  bash install.sh --debug      Подробный отладочный вывод
-  bash install.sh --log FILE   Писать журнал в указанный файл
+Usage:
+  bash install.sh              Start the interactive installer
+  bash install.sh --check      Check UEFI, live environment and network
+  bash install.sh --dry-run    Collect settings and show the plan without changes
+  bash install.sh --plain      Do not use the full-screen UI; plain text only
+  bash install.sh --debug      Verbose debug output
+  bash install.sh --log FILE   Write the log to FILE
   bash install.sh --version
   bash install.sh --help
 
-ВАЖНО:
-  * Поддерживается только x86_64 UEFI; Legacy/CSM не поддерживается.
-  * Обычный запуск полностью стирает выбранный диск после подтверждения.
-  * Проект не использует archinstall; применяются pacstrap, pacman,
-    systemd-boot, mkinitcpio, sgdisk, mkfs и другие штатные инструменты.
+IMPORTANT:
+  * Only x86_64 UEFI is supported; Legacy/CSM is not supported.
+  * A normal run erases the selected disk completely after confirmation.
+  * The installer does not use archinstall; it uses pacstrap, pacman,
+    systemd-boot, mkinitcpio, sgdisk, mkfs and other standard tools.
 EOF
 }
 
@@ -102,14 +102,14 @@ parse_args() {
             --log)
                 shift
                 [[ $# -gt 0 ]] || {
-                    error "--log требует путь к файлу."
+                    error "--log requires a file path."
                     exit 2
                 }
                 LOG_FILE=$1
                 ;;
             *)
                 usage >&2
-                error "Неизвестный аргумент: $1"
+                error "Unknown argument: $1"
                 exit 2
                 ;;
         esac
@@ -146,11 +146,11 @@ main() {
 
     local splash_choice
     if ! splash_choice=$(ui_splash); then
-        printf 'Не удалось запустить полноэкранный интерфейс. Запусти: bash install.sh --plain\n' >&4
+        printf 'Could not start the full-screen interface. Run: bash install.sh --plain\n' >&4
         exit 1
     fi
     if [[ $splash_choice != install ]]; then
-        info "Выход по выбору пользователя."
+        info "Exiting at the user's request."
         return 0
     fi
 
@@ -160,8 +160,8 @@ main() {
     ui_step_set 0
     network_ensure
     ui_step_set 1
-    if ! ui_run_logged "Подготовка пакетов" install_refresh_packages; then
-        die "Не удалось подготовить базу пакетов live-среды."
+    if ! ui_run_logged "Preparing packages" install_refresh_packages; then
+        die "Could not prepare the live package database."
     fi
     hw_detect
     hw_show_screen
@@ -171,7 +171,7 @@ main() {
     workflow_show_summary
 
     if ((DRY_RUN)); then
-        ui_msg "Dry-run завершён: диск не изменялся.\n\nВыбранные параметры показаны на предыдущем экране." \
+        ui_msg "Dry-run complete: the disk was not changed.\n\nThe selected settings are shown on the previous screen." \
             "Dry-run"
         return 0
     fi

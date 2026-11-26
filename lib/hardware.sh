@@ -63,7 +63,7 @@ hw_detect_firmware() {
         [[ -n $bios_date ]] && HW_FIRMWARE+=", $bios_date"
         [[ $HW_FIRMWARE == *'('* ]] && HW_FIRMWARE+=')'
     else
-        HW_FIRMWARE="Legacy BIOS (не поддерживается)"
+        HW_FIRMWARE="Legacy BIOS (not supported)"
     fi
 }
 
@@ -72,7 +72,7 @@ hw_detect_gpus() {
         HW_GPUS=$(lspci -nn 2>/dev/null | grep -Ei 'VGA compatible controller|3D controller|Display controller' || true)
     fi
     if [[ -z $HW_GPUS ]]; then
-        HW_GPUS="Не удалось определить (lspci недоступен или GPU не найден)"
+        HW_GPUS="Could not detect (lspci unavailable or no GPU found)"
     fi
 }
 
@@ -80,7 +80,7 @@ hw_detect_network() {
     if command -v ip >/dev/null 2>&1; then
         HW_NETWORK=$(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -v '^lo$' | paste -sd ', ' - || true)
     fi
-    [[ -n $HW_NETWORK ]] || HW_NETWORK="Не обнаружены сетевые интерфейсы"
+    [[ -n $HW_NETWORK ]] || HW_NETWORK="No network interfaces detected"
     if command -v iw >/dev/null 2>&1; then
         local wifi
         wifi=$(iw dev 2>/dev/null | awk '$1 == "Interface" {print $2}' | paste -sd ', ' - || true)
@@ -99,9 +99,9 @@ hw_detect_secure_boot() {
         local value
         value=$(od -An -t u1 -j 4 -N 1 -- "$efivar" 2>/dev/null | tr -d ' \n' || true)
         case $value in
-            1) HW_SECURE_BOOT="включён" ;;
-            0) HW_SECURE_BOOT="выключен" ;;
-            *) HW_SECURE_BOOT="неизвестно" ;;
+            1) HW_SECURE_BOOT="enabled" ;;
+            0) HW_SECURE_BOOT="disabled" ;;
+            *) HW_SECURE_BOOT="unknown" ;;
         esac
     fi
 }
@@ -142,7 +142,7 @@ hw_check_memory() {
     local recommended
     recommended=$(hw_recommended_ram_mib "$desktop")
     if ((HW_MEMORY_MIB < recommended)); then
-        warn "Обнаружено ${HW_MEMORY_MIB} MiB RAM; рекомендуется минимум ${recommended} MiB."
+        warn "Detected ${HW_MEMORY_MIB} MiB RAM; at least ${recommended} MiB is recommended."
     fi
 }
 
@@ -160,20 +160,20 @@ hw_add_packages() {
 
 hw_report() {
     cat <<EOF
-Процессор:      $(core_value_or "$HW_CPU_MODEL") (${HW_CPU_CORES:-?} потоков)
-Производитель:  $(core_value_or "$HW_CPU_VENDOR")
-Архитектура:    $(uname -m)
-Память:         ${HW_MEMORY_MIB} MiB
-Материнская плата: $(core_value_or "$HW_BOARD_VENDOR") $(core_value_or "$HW_BOARD_NAME" '')
-Прошивка:       $(core_value_or "$HW_FIRMWARE")
+CPU:            $(core_value_or "$HW_CPU_MODEL") (${HW_CPU_CORES:-?} threads)
+Vendor:         $(core_value_or "$HW_CPU_VENDOR")
+Architecture:   $(uname -m)
+Memory:         ${HW_MEMORY_MIB} MiB
+Motherboard:    $(core_value_or "$HW_BOARD_VENDOR") $(core_value_or "$HW_BOARD_NAME" '')
+Firmware:       $(core_value_or "$HW_FIRMWARE")
 Secure Boot:    $(core_value_or "$HW_SECURE_BOOT")
-Микрокод:       $(core_value_or "$(hw_microcode_package)" 'не требуется/неизвестен')
-Ноутбук:        $(if hw_is_laptop; then echo да; else echo нет; fi)
+Microcode:      $(core_value_or "$(hw_microcode_package)" 'not required/unknown')
+Laptop:         $(if hw_is_laptop; then echo yes; else echo no; fi)
 
-Видеокарты:
+GPUs:
 $HW_GPUS
 
-Сеть:
+Network:
 $HW_NETWORK
 EOF
 }
@@ -181,5 +181,5 @@ EOF
 hw_show_screen() {
     local report="$TEMP_DIR/hardware.txt"
     hw_report >"$report"
-    ui_show_text "Оборудование" "$report"
+    ui_show_text "Hardware" "$report"
 }

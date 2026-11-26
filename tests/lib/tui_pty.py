@@ -21,7 +21,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TUI = os.path.join(ROOT, "lib", "tui.py")
 
-STEPS = "Сеть|Железо|Профиль|Ядро|Файлы|Диск|Система|Шифрование|Пакеты|Итог|Установка"
+STEPS = "Network|Hardware|Profile|Kernel|Filesystem|Disk|System|Encryption|Packages|Summary|Install"
 
 
 def strip_ansi(data):
@@ -130,48 +130,48 @@ def main():
         [
             "menu",
             "--title",
-            "Профиль",
+            "Profile",
             "--prompt",
-            "Выбери профиль системы",
+            "Choose the system profile",
             "--item",
-            "minimal|Минимальная|консоль",
+            "minimal|Minimal|console",
             "--item",
-            "basic|Базовая|GNOME",
+            "basic|Basic|GNOME",
         ]
     )
     check("menu returns the selected tag", code == 0 and result == "minimal", f"code={code} result={result!r}")
-    check("menu renders the title", "Профиль" in text)
-    check("menu renders the step sidebar", all(label in text for label in ("Сеть", "Профиль", "Установка")))
+    check("menu renders the title", "Profile" in text)
+    check("menu renders the step sidebar", all(label in text for label in ("Network", "Profile", "Install")))
 
     text, result, code = run(
-        ["menu", "--title", "Профиль", "--prompt", "Выбери", "--item", "a|A", "--item", "b|B"],
+        ["menu", "--title", "Profile", "--prompt", "Choose", "--item", "a|A", "--item", "b|B"],
         keys=b"\x1b",
     )
     check("Escape cancels a menu", code == 1 and result == "", f"code={code} result={result!r}")
 
     text, result, code = run(
-        ["input", "--title", "Hostname", "--prompt", "Имя компьютера", "--initial", ""],
+        ["input", "--title", "Hostname", "--prompt", "Hostname", "--initial", ""],
         keys=b"myhost\r",
     )
     check("input returns typed text", code == 0 and result == "myhost", f"code={code} result={result!r}")
 
     text, result, code = run(
-        ["password", "--title", "Пароль", "--prompt", "Введи пароль"],
+        ["password", "--title", "Password", "--prompt", "Enter password"],
         keys=b"s3cret\r",
     )
     check("password returns its value", code == 0 and result == "s3cret", f"code={code}")
     check("password is not rendered on screen", "s3cret" not in text)
 
-    _, _, code = run(["confirm", "--title", "Вопрос", "--prompt", "Продолжить?"], keys=b"y")
+    _, _, code = run(["confirm", "--title", "Question", "--prompt", "Continue?"], keys=b"y")
     check("confirm accepts yes", code == 0, f"code={code}")
-    _, _, code = run(["confirm", "--title", "Вопрос", "--prompt", "Продолжить?"], keys=b"n")
+    _, _, code = run(["confirm", "--title", "Question", "--prompt", "Continue?"], keys=b"n")
     check("confirm accepts no", code == 1, f"code={code}")
 
-    text, _, code = run(["msg", "--title", "Итог", "--message", "Всё готово"], keys=b"\r")
-    check("message box closes with Enter", code == 0 and "Всё готово" in text, f"code={code}")
+    text, _, code = run(["msg", "--title", "Summary", "--message", "All done"], keys=b"\r")
+    check("message box closes with Enter", code == 0 and "All done" in text, f"code={code}")
 
     text, _, code = run(
-        ["program", "--title", "Установка", "--prompt", "Выполняется", "--fd", "5"],
+        ["program", "--title", "Install", "--prompt", "Running", "--fd", "5"],
         feed=["line-one\n", "line-two\n"],
     )
     check("program screen shows command output", code == 0 and "line-one" in text and "line-two" in text, f"code={code}")
@@ -182,27 +182,27 @@ def main():
             "--app-version",
             "0.11.0",
             "--item",
-            "install|Начать установку|Настроить",
+            "install|Start installation|Configure",
             "--item",
-            "exit|Выход|Закрыть",
+            "exit|Exit|Close",
         ]
     )
     check("splash returns install", code == 0 and result == "install", f"code={code} result={result!r}")
     check("splash shows the installer name", "ArchinstallSuper" in text)
 
     text, result, code = run(
-        ["menu", "--title", "ASCII", "--prompt", "Тест", "--item", "one|Первый"],
+        ["menu", "--title", "ASCII", "--prompt", "Test", "--item", "one|First"],
         env={"AS_UI_ASCII": "1"},
     )
     check("ASCII fallback still works", code == 0 and result == "one" and "ASCII" in text, f"code={code}")
 
     text, result, code = run(
-        ["menu", "--title", "Linux", "--prompt", "Тест", "--item", "one|Первый"],
+        ["menu", "--title", "Linux", "--prompt", "Test", "--item", "one|First"],
         env={"TERM": "linux"},
         size=(25, 80),
     )
     check("linux console terminal works", code == 0 and result == "one", f"code={code}")
-    check("80-column terminal shows the step sidebar", "ЭТАПЫ" in text and "Сеть" in text)
+    check("80-column terminal shows the step sidebar", "STEPS" in text and "Network" in text)
 
     if failures:
         print(f"\n{failures} TUI checks failed", file=sys.stderr)

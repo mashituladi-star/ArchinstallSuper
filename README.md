@@ -92,15 +92,15 @@ bash install.sh --help
 ╭──────────────────────────────────────────────────────────╮
 │ ● ● ●   ArchinstallSuper        v0.11.0 · UEFI           │
 │──────────────────────────────────────────────────────────│
-│  ЭТАПЫ    │ Профиль системы                              │
-│  ✓ Сеть   │ Выбери профиль системы                       │
-│  ✓ Железо │ › Минимальная       консоль                  │
-│  ● Профиль│   Базовая           GNOME                    │
-│  ○ Ядро   │   Полная            GNOME + приложения       │
-│  ○ Файлы  │                                              │
+│  STEPS    │ System profile                               │
+│  ✓ Network│ Choose the software set to install.          │
+│  ✓ Hardware│ › Minimal          console                  │
+│  ● Profile│   Basic             GNOME                    │
+│  ○ Kernel │   Full              GNOME + applications     │
+│  ○ Filesystem                                            │
 │  ...      │                                              │
 │──────────────────────────────────────────────────────────│
-│ ↑/↓ выбрать   Enter подтвердить   Esc отмена             │
+│ ↑/↓ select   Enter confirm   Esc cancel                  │
 ╰──────────────────────────────────────────────────────────╯
 ```
 

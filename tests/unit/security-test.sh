@@ -27,10 +27,10 @@ test_password_problems() {
     assert_eq "" "$problem" "strong password has no problem"
 
     problem=$(security_password_problem 'with:colon123' alice archlinux)
-    assert_contains "$problem" "двоеточие" "colon"
+    assert_contains "$problem" "colon" "colon"
 
     problem=$(security_password_problem 'aliceuser' aliceuser archlinux)
-    assert_contains "$problem" "пользователя" "username reuse"
+    assert_contains "$problem" "user name" "username reuse"
 }
 
 test_forget_passwords() {

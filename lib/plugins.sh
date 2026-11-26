@@ -22,13 +22,13 @@ plugin_load_all() {
         [[ -f $file ]] || continue
         name=$(basename -- "$file" .sh)
         if [[ ! $name =~ ^[A-Za-z0-9_]+$ ]]; then
-            warn "Пропускаю плагин с недопустимым именем: $file"
+            warn "Skipping plugin with an invalid name: $file"
             continue
         fi
         # shellcheck source=/dev/null
-        source "$file" || die "Не удалось загрузить плагин: $file"
+        source "$file" || die "Could not load plugin: $file"
         PLUGIN_NAMES+=("$name")
-        info "Загружен плагин: $name"
+        info "Plugin loaded: $name"
     done
 }
 
@@ -39,8 +39,8 @@ plugin_hook() {
     for name in "${PLUGIN_NAMES[@]}"; do
         function="plugin_${name}_${hook}"
         if declare -F "$function" >/dev/null 2>&1; then
-            debug "Плагин $name: hook $hook"
-            "$function" "$@" || die "Плагин $name прервал установку на hook $hook."
+            debug "Plugin $name: hook $hook"
+            "$function" "$@" || die "Plugin $name aborted the installation at hook $hook."
         fi
     done
 }

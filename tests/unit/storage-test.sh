@@ -47,7 +47,7 @@ test_fs_packages() {
 }
 
 test_unsafe_device() {
-    assert_contains "$(storage_disk_safety_problem /dev/null)" "блочное" "character device must be rejected"
+    assert_contains "$(storage_disk_safety_problem /dev/null)" "block device" "character device must be rejected"
     assert_false "character device is not safe" storage_disk_is_safe /dev/null
 }
 
@@ -65,7 +65,7 @@ test_safety_rejects_mounted_disk() {
             *) return 1 ;;
         esac
     }
-    assert_contains "$(storage_disk_safety_problem /dev/sdz)" "смонтирован" "mounted partition"
+    assert_contains "$(storage_disk_safety_problem /dev/sdz)" "mounted" "mounted partition"
     assert_false "mounted disk is not safe" storage_disk_is_safe /dev/sdz
 }
 
@@ -83,7 +83,7 @@ test_safety_rejects_active_stack() {
             *) return 1 ;;
         esac
     }
-    assert_contains "$(storage_disk_safety_problem /dev/sdz)" "устройством" "active crypt"
+    assert_contains "$(storage_disk_safety_problem /dev/sdz)" "in use by device" "active crypt"
 }
 
 test_safety_rejects_swap() {
@@ -100,7 +100,7 @@ test_safety_rejects_swap() {
             *) return 1 ;;
         esac
     }
-    assert_contains "$(storage_disk_safety_problem /dev/sdz)" "swap" "active swap"
+    assert_contains "$(storage_disk_safety_problem /dev/sdz)" "Swap is active" "active swap"
 }
 
 test_safety_rejects_live_media() {

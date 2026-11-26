@@ -10,10 +10,10 @@ AS_RECOVERY_LOADED=1
 
 recovery_lock() {
     [[ $AS_TEST == 1 ]] && return 0
-    mkdir -p -- "$STATE_DIR" || die "Не удалось создать $STATE_DIR."
+    mkdir -p -- "$STATE_DIR" || die "Could not create $STATE_DIR."
     exec {LOCK_FD}>"$LOCK_FILE"
     if ! flock -n "$LOCK_FD"; then
-        die "Другой экземпляр ArchinstallSuper уже работает (lock: $LOCK_FILE)."
+        die "Another ArchinstallSuper instance is already running (lock: $LOCK_FILE)."
     fi
 }
 
@@ -24,7 +24,7 @@ recovery_release() {
 
 recovery_safe_unmount() {
     if ((MOUNTED_BY_US)); then
-        storage_unmount_target || warn "Целевая система осталась смонтированной в $TARGET."
+        storage_unmount_target || warn "The target system is still mounted at $TARGET."
     fi
 }
 
@@ -32,8 +32,8 @@ recovery_cleanup() {
     local rc=${1:-0}
     trap - EXIT INT TERM HUP
     if ((rc != 0)); then
-        warn "Установка прервана (код $rc)."
-        [[ -n ${INSTALL_PHASE:-} ]] && warn "Прерванная фаза: $INSTALL_PHASE"
+        warn "Installation aborted (code $rc)."
+        [[ -n ${INSTALL_PHASE:-} ]] && warn "Aborted phase: $INSTALL_PHASE"
         if ((INSTALL_STARTED)); then
             if ((MOUNTED_BY_US)); then
                 install_copy_log >/dev/null 2>&1 || true
@@ -41,18 +41,18 @@ recovery_cleanup() {
             recovery_safe_unmount
             if [[ ${LUKS_OPENED:-0} == 1 ]]; then
                 if mountpoint -q "$TARGET" 2>/dev/null; then
-                    warn "LUKS-контейнер оставлен открытым: $TARGET всё ещё смонтирован."
+                    warn "LUKS container left open: $TARGET is still mounted."
                 else
                     security_luks_close || true
                 fi
             fi
-            warn "Журнал: $LOG_FILE"
-            warn "Если диск уже был изменён, не запускай установку повторно вслепую:"
-            warn "  1) проверь lsblk; 2) при необходимости закрой LUKS: cryptsetup close $LUKS_NAME;"
-            warn "  3) размонтируй: umount -R $TARGET; 4) перезагрузись в live-среду и повтори."
+            warn "Log: $LOG_FILE"
+            warn "If the disk was already modified, do not blindly rerun the installer:"
+            warn "  1) check lsblk; 2) if needed, close LUKS: cryptsetup close $LUKS_NAME;"
+            warn "  3) unmount: umount -R $TARGET; 4) reboot into the live environment and retry."
         else
-            warn "Диск не изменялся: установка остановлена до этапа разметки."
-            warn "Журнал: $LOG_FILE"
+            warn "The disk was not changed: installation stopped before partitioning."
+            warn "Log: $LOG_FILE"
         fi
     else
         recovery_safe_unmount
@@ -62,8 +62,8 @@ recovery_cleanup() {
     # touched, show a final screen with the recovery steps as well.
     if ((rc != 0 && INSTALL_STARTED)) && [[ ${AS_UI_CHILD:-0} != 1 ]] &&
         declare -F ui_error >/dev/null 2>&1 && [[ ${UI_MODE:-plain} != plain ]]; then
-        ui_error "Установка прервана (код $rc).\n\nЖурнал: $LOG_FILE\n\nПроверь lsblk. Если диск уже изменён, не запускай установку вслепую: закрой LUKS (cryptsetup close ${LUKS_NAME:-cryptroot}), размонтируй $TARGET (umount -R $TARGET) и перезагрузись в live-среду." \
-            "Установка прервана"
+        ui_error "Installation aborted (code $rc).\n\nLog: $LOG_FILE\n\nCheck lsblk. If the disk was already modified, do not blindly rerun the installer: close LUKS (cryptsetup close ${LUKS_NAME:-cryptroot}), unmount $TARGET (umount -R $TARGET) and reboot into the live environment." \
+            "Installation aborted"
     fi
 
     if [[ -n ${TEMP_DIR:-} && -d $TEMP_DIR ]]; then
@@ -80,7 +80,7 @@ recovery_on_exit() {
 recovery_on_signal() {
     local signal=$1
     trap - INT TERM HUP
-    warn "Получен сигнал $signal. Останавливаю установку."
+    warn "Received signal $signal. Stopping the installation."
     exit 130
 }
 

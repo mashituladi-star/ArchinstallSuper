@@ -30,44 +30,44 @@ network_wifi_devices() {
 
 network_status_text() {
     cat <<EOF
-Интернет:      $(if network_online; then echo доступен; else echo недоступен; fi)
-DNS:           $(if network_dns_ok; then echo работает; else echo не работает; fi)
+Internet:      $(if network_online; then echo available; else echo unavailable; fi)
+DNS:           $(if network_dns_ok; then echo working; else echo not working; fi)
 
-Интерфейсы:
+Interfaces:
 $(network_interfaces | sed 's/^/  - /')
 
 Wi-Fi:
 $(network_wifi_devices | sed 's/^/  - /')
 
-Маршрут по умолчанию:
-$(ip route show default 2>/dev/null || echo '  нет')
+Default route:
+$(ip route show default 2>/dev/null || echo '  none')
 
-DNS-серверы:
-$(awk '/^nameserver/ {print "  " $0}' /etc/resolv.conf 2>/dev/null || echo '  нет')
+DNS servers:
+$(awk '/^nameserver/ {print "  " $0}' /etc/resolv.conf 2>/dev/null || echo '  none')
 EOF
 }
 
 network_show_status() {
     local file="$TEMP_DIR/network-status.txt"
     network_status_text >"$file"
-    ui_show_text "Сеть" "$file"
+    ui_show_text "Network" "$file"
 }
 
 network_scan_wifi() {
     local device=$1
     local file="$TEMP_DIR/wifi-networks.txt"
     command -v iwctl >/dev/null 2>&1 || {
-        ui_error "iwctl не найден. Подключи Wi-Fi вручную и повтори проверку."
+        ui_error "iwctl not found. Connect Wi-Fi manually and retry."
         return 1
     }
-    info "Сканирую Wi-Fi на $device."
+    info "Scanning Wi-Fi on $device."
     iwctl station "$device" scan >/dev/null 2>&1 || true
     sleep 2
     {
-        printf 'Устройство: %s\n\n' "$device"
+        printf 'Device: %s\n\n' "$device"
         iwctl station "$device" get-networks 2>&1 || true
     } >"$file"
-    ui_show_text "Доступные Wi-Fi сети" "$file"
+    ui_show_text "Available Wi-Fi networks" "$file"
 }
 
 network_connect_wifi() {
@@ -77,7 +77,7 @@ network_connect_wifi() {
         [[ -n $device ]] && devices+=("$device")
     done < <(network_wifi_devices)
     ((${#devices[@]} > 0)) || {
-        ui_error "Wi-Fi-адаптер не найден."
+        ui_error "No Wi-Fi adapter found."
         return 1
     }
 
@@ -86,27 +86,27 @@ network_connect_wifi() {
     else
         local -a menu=()
         for device in "${devices[@]}"; do
-            menu+=("$device" "Wi-Fi интерфейс")
+            menu+=("$device" "Wi-Fi interface")
         done
-        device=$(ui_menu "Wi-Fi" "Выбери интерфейс." "${menu[@]}") || return 1
+        device=$(ui_menu "Wi-Fi" "Choose an interface." "${menu[@]}") || return 1
     fi
 
     network_scan_wifi "$device" || true
     local ssid
-    ssid=$(ui_input "Wi-Fi" "Имя сети (SSID):") || return 1
+    ssid=$(ui_input "Wi-Fi" "Network name (SSID):") || return 1
     [[ -n $ssid ]] || return 1
     local password=
-    password=$(ui_password "Wi-Fi" "Пароль сети (оставь пустым для открытой сети):") || return 1
+    password=$(ui_password "Wi-Fi" "Network password (leave empty for an open network):") || return 1
 
     command -v iwctl >/dev/null 2>&1 || {
-        ui_error "iwctl не найден."
+        ui_error "iwctl not found."
         return 1
     }
-    info "Подключаюсь к Wi-Fi $ssid."
+    info "Connecting to Wi-Fi $ssid."
     # iwctl reads the passphrase from stdin; it is not exposed in argv.
     if ! printf '%s\n' "$password" | iwctl station "$device" connect "$ssid" >/dev/null 2>&1; then
         unset password
-        ui_error "Не удалось подключиться к $ssid. Проверь имя сети и пароль."
+        ui_error "Could not connect to $ssid. Check the network name and password."
         return 1
     fi
     unset password
@@ -114,7 +114,7 @@ network_connect_wifi() {
     if network_online; then
         return 0
     fi
-    ui_error "Подключение установлено, но интернет недоступен. Проверь DHCP/DNS."
+    ui_error "Connected, but the internet is unreachable. Check DHCP/DNS."
     return 1
 }
 
@@ -133,23 +133,23 @@ network_wait() {
 
 network_ensure() {
     if network_wait 2; then
-        info "Интернет доступен."
+        info "Internet is available."
         return 0
     fi
 
-    warn "Интернет недоступен."
+    warn "Internet is unavailable."
     local choice
     while true; do
-        choice=$(ui_menu "Нет интернета" \
-            "Для установки нужны пакеты из репозиториев Arch. Подключи сеть." \
-            "retry" "Повторить проверку" \
-            "wifi" "Подключить Wi-Fi" \
-            "status" "Показать состояние сети" \
-            "abort" "Прервать установку") || die "Отменено пользователем."
+        choice=$(ui_menu "No internet" \
+            "Installation needs packages from the Arch repositories. Connect to a network." \
+            "retry" "Retry the check" \
+            "wifi" "Connect Wi-Fi" \
+            "status" "Show network status" \
+            "abort" "Abort installation") || die "Cancelled by the user."
         case $choice in
             retry)
-                network_wait 3 && { info "Интернет доступен."; return 0; }
-                ui_error "Интернет всё ещё недоступен."
+                network_wait 3 && { info "Internet is available."; return 0; }
+                ui_error "The internet is still unavailable."
                 ;;
             wifi)
                 network_connect_wifi || true
@@ -158,7 +158,7 @@ network_ensure() {
                 network_show_status
                 ;;
             abort)
-                die "Установка прервана: нет доступа в интернет."
+                die "Installation aborted: no internet access."
                 ;;
         esac
     done
@@ -167,15 +167,15 @@ network_ensure() {
 network_check() {
     local failed=0
     if network_online; then
-        info "Интернет: доступен."
+        info "Internet: available."
     else
-        error "Интернет: недоступен."
+        error "Internet: unavailable."
         failed=1
     fi
     if network_dns_ok; then
-        info "DNS: работает."
+        info "DNS: working."
     else
-        error "DNS: не работает."
+        error "DNS: not working."
         failed=1
     fi
     return "$failed"

@@ -57,12 +57,12 @@ test_summary_contains_safety_warning() {
     TIMEZONE=UTC
     LOCALE=en_US.UTF-8
     KEYMAP=us
-    HW_SECURE_BOOT=выключен
+    HW_SECURE_BOOT=disabled
     PACKAGES=(base linux)
     local text
     text=$(workflow_summary_text)
-    assert_contains "$text" "все данные" "data-loss warning"
-    assert_contains "$text" "заблокирован" "root policy"
+    assert_contains "$text" "all data" "data-loss warning"
+    assert_contains "$text" "locked" "root policy"
     assert_contains "$text" "/dev/vda" "disk"
     assert_contains "$text" "Secure Boot" "secure boot state"
 }

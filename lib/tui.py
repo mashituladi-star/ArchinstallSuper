@@ -29,17 +29,17 @@ APP_NAME = "ArchinstallSuper"
 DEFAULT_VERSION = "0.11.0"
 
 DEFAULT_STEPS = [
-    "Сеть",
-    "Железо",
-    "Профиль",
-    "Ядро",
-    "Файлы",
-    "Диск",
-    "Система",
-    "Шифрование",
-    "Пакеты",
-    "Итог",
-    "Установка",
+    "Network",
+    "Hardware",
+    "Profile",
+    "Kernel",
+    "Filesystem",
+    "Disk",
+    "System",
+    "Encryption",
+    "Packages",
+    "Summary",
+    "Install",
 ]
 
 LOGO = [
@@ -258,7 +258,7 @@ class Screen:
             sy = self.y + 3
             sh = self.win_h - 6
             self.fill(sy, sx, sh, self.sidebar_w, " ", self.t.a("sidebar"))
-            self.put(sy, sx + 2, "ЭТАПЫ", self.t.a("dim"))
+            self.put(sy, sx + 2, "STEPS", self.t.a("dim"))
             visible = max(1, sh - 2)
             start = 0
             if step_index >= visible:
@@ -425,8 +425,8 @@ def is_right(ch):
 def screen_splash(scr, args):
     theme = Theme(scr)
     items = parse_items(args.item) or [
-        ("install", "Начать установку", "Настроить и установить Arch Linux"),
-        ("exit", "Выход", "Закрыть установщик"),
+        ("install", "Start installation", "Configure and install Arch Linux"),
+        ("exit", "Exit", "Close installer"),
     ]
     selected = 0
     steps, step_index = steps_from_args(args)
@@ -435,7 +435,7 @@ def screen_splash(scr, args):
 
     while True:
         s = Screen(scr, theme)
-        row = s.chrome("", "↑/↓ выбрать   Enter запустить   Esc выход", steps, step_index, version)
+        row = s.chrome("", "↑/↓ select   Enter start   Esc exit", steps, step_index, version)
         logo_width = max(len(line) for line in logo)
         logo_x = s.main_x + max(0, (s.main_w - logo_width) // 2)
         for line in logo:
@@ -445,7 +445,7 @@ def screen_splash(scr, args):
         subtitle = "Arch Linux  ·  UEFI Installer  ·  2026"
         s.put(row, s.main_x + max(0, (s.main_w - len(subtitle)) // 2), subtitle, theme.a("dim"))
         row += 1
-        tagline = "Безопасная установка без archinstall"
+        tagline = "Safe Arch Linux installation without archinstall"
         s.put(row, s.main_x + max(0, (s.main_w - len(tagline)) // 2), tagline, theme.a("text"))
         row += 2
 
@@ -489,9 +489,9 @@ def screen_menu(scr, args):
             selected = i
             break
     top = 0
-    footer = "↑/↓ выбрать   Enter подтвердить   Esc отмена"
+    footer = "↑/↓ select   Enter confirm   Esc cancel"
     if args.no_cancel:
-        footer = "↑/↓ выбрать   Enter подтвердить"
+        footer = "↑/↓ select   Enter confirm"
 
     while True:
         s = Screen(scr, theme)
@@ -557,8 +557,8 @@ def screen_input(scr, args):
     version = app_version(args)
     text = args.initial or ""
     cursor = len(text)
-    label = args.label or "Значение"
-    footer = "Enter подтвердить   Esc отмена"
+    label = args.label or "Value"
+    footer = "Enter confirm   Esc cancel"
 
     while True:
         s = Screen(scr, theme)
@@ -599,7 +599,7 @@ def screen_input(scr, args):
                 s.put(hint_row, s.main_x, line, theme.a("dim"))
                 hint_row += 1
         if args.password:
-            s.put(hint_row, s.main_x, "Ввод скрыт. Пароль не записывается в журнал.", theme.a("dim"))
+            s.put(hint_row, s.main_x, "Input hidden. The password is never written to the log.", theme.a("dim"))
 
         scr.refresh()
         ch = read_key(scr)
@@ -659,16 +659,16 @@ def screen_confirm(scr, args):
     theme = Theme(scr)
     steps, step_index = steps_from_args(args)
     version = app_version(args)
-    labels = [args.yes_label or "Да", args.no_label or "Нет"]
+    labels = [args.yes_label or "Yes", args.no_label or "No"]
     selected = 1 if args.default == "no" else 0
-    footer = "←/→ выбрать   Enter подтвердить   y/n   Esc отмена"
+    footer = "←/→ select   Enter confirm   y/n   Esc cancel"
 
     while True:
         s = Screen(scr, theme)
-        row = s.chrome(args.title or "Подтверждение", footer, steps, step_index, version)
+        row = s.chrome(args.title or "Confirmation", footer, steps, step_index, version)
         row = s.prompt(row, args.prompt) + 2
         s.buttons(row, labels, selected)
-        s.put(row + 3, s.main_x, "Enter — подтвердить выбор, Esc — отмена.", theme.a("dim"))
+        s.put(row + 3, s.main_x, "Enter — confirm, Esc — cancel.", theme.a("dim"))
         scr.refresh()
         ch = read_key(scr)
         if is_left(ch):
@@ -679,9 +679,9 @@ def screen_confirm(scr, args):
             selected = 1 - selected
         elif is_enter(ch):
             return selected == 0
-        elif key_in(ch, "y", "Y", "д", "Д"):
+        elif key_in(ch, "y", "Y"):
             return True
-        elif key_in(ch, "n", "N", "н", "Н") or is_escape(ch):
+        elif key_in(ch, "n", "N") or is_escape(ch):
             return False
         elif ch == curses.KEY_RESIZE:
             continue
@@ -706,7 +706,7 @@ def screen_msg(scr, args):
 
     while True:
         s = Screen(scr, theme)
-        row = s.chrome(args.title or APP_NAME, "↑/↓ прокрутка   Enter закрыть", steps, step_index, version)
+        row = s.chrome(args.title or APP_NAME, "↑/↓ scroll   Enter close", steps, step_index, version)
         visible = max(1, s.content_y + s.content_h - row - 2)
         if offset > max(0, len(lines) - visible):
             offset = max(0, len(lines) - visible)
@@ -749,7 +749,7 @@ def screen_textbox(scr, args):
             with open(args.file, "r", encoding="utf-8", errors="replace") as handle:
                 lines = handle.read().splitlines()
         except OSError as exc:
-            lines = [f"Не удалось прочитать файл: {exc}"]
+            lines = [f"Could not read file: {exc}"]
     else:
         lines = (args.text or "").splitlines()
     if not lines:
@@ -758,7 +758,7 @@ def screen_textbox(scr, args):
 
     while True:
         s = Screen(scr, theme)
-        row = s.chrome(args.title or "Просмотр", "↑/↓ PgUp/PgDn   Enter закрыть", steps, step_index, version)
+        row = s.chrome(args.title or "Viewer", "↑/↓ PgUp/PgDn   Enter close", steps, step_index, version)
         visible = max(1, s.content_y + s.content_h - row - 1)
         offset = min(offset, max(0, len(lines) - visible))
         for line in lines[offset : offset + visible]:
@@ -807,7 +807,7 @@ def _program_common(scr, args, gauge):
     thread.start()
     lines = deque(maxlen=200)
     percent = 0
-    message = args.prompt or "Выполняется..."
+    message = args.prompt or "Working..."
     done = False
     finished_at = None
     spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"] if theme.unicode else ["|", "/", "-", "\\"]
@@ -842,7 +842,7 @@ def _program_common(scr, args, gauge):
             break
 
         s = Screen(scr, theme)
-        row = s.chrome(args.title or "Выполняется", "Установка выполняется · не закрывайте терминал", steps, step_index, version)
+        row = s.chrome(args.title or "Running", "Installation in progress · do not close the terminal", steps, step_index, version)
         row = s.prompt(row, message)
         row += 1
         if gauge:
@@ -860,7 +860,7 @@ def _program_common(scr, args, gauge):
         spinner = spinner_frames[spinner_index % len(spinner_frames)]
         spinner_index += 1
         elapsed = int(time.monotonic() - start)
-        status = "готово" if done else "работаю"
+        status = "done" if done else "working"
         s.put(s.y + s.win_h - 2, s.x + 2, f"{spinner}  {status}  ·  {elapsed}s", theme.a("accent"))
         scr.refresh()
         ch = scr.getch()
@@ -945,8 +945,8 @@ def build_parser():
     p = sub.add_parser("confirm")
     common(p)
     p.add_argument("--default", default="")
-    p.add_argument("--yes-label", default="Да")
-    p.add_argument("--no-label", default="Нет")
+    p.add_argument("--yes-label", default="Yes")
+    p.add_argument("--no-label", default="No")
 
     p = sub.add_parser("msg")
     common(p)

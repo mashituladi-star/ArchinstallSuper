@@ -79,15 +79,15 @@ boot_modules_with_fs() {
 
 boot_configure_initramfs() {
     local conf="$TARGET/etc/mkinitcpio.conf"
-    [[ -f $conf ]] || die "Не найден $conf."
+    [[ -f $conf ]] || die "File not found: $conf."
     local hooks_line hooks new_hooks
     hooks_line=$(grep '^HOOKS=' "$conf" || true)
-    [[ -n $hooks_line ]] || die "В mkinitcpio.conf не найдена строка HOOKS."
+    [[ -n $hooks_line ]] || die "HOOKS line not found in mkinitcpio.conf."
     hooks=${hooks_line#HOOKS=(}
     hooks=${hooks%)}
     new_hooks=$(boot_hooks_with_encrypt "$hooks")
     sed -i "s|^HOOKS=.*|HOOKS=(${new_hooks})|" "$conf" ||
-        die "Не удалось обновить HOOKS в mkinitcpio.conf."
+        die "Could not update HOOKS in mkinitcpio.conf."
 
     local fs_module=
     case ${FS_TYPE:-ext4} in
@@ -103,63 +103,63 @@ boot_configure_initramfs() {
             modules=${modules%)}
             new_modules=$(boot_modules_with_fs "$modules" "$fs_module")
             sed -i "s|^MODULES=.*|MODULES=(${new_modules})|" "$conf" ||
-                die "Не удалось обновить MODULES в mkinitcpio.conf."
+                die "Could not update MODULES in mkinitcpio.conf."
         else
             printf 'MODULES=(%s)\n' "$fs_module" >>"$conf"
         fi
     fi
 
-    info "Пересоздаю initramfs."
-    arch-chroot "$TARGET" mkinitcpio -P || die "mkinitcpio завершился с ошибкой."
+    info "Rebuilding initramfs."
+    arch-chroot "$TARGET" mkinitcpio -P || die "mkinitcpio failed."
 }
 
 boot_write_loader_conf() {
-    mkdir -p "$TARGET/boot/loader/entries" || die "Не удалось создать каталог systemd-boot."
+    mkdir -p "$TARGET/boot/loader/entries" || die "Could not create the systemd-boot directory."
     boot_loader_conf_content >"$TARGET/boot/loader/loader.conf" ||
-        die "Не удалось записать loader.conf."
+        die "Could not write loader.conf."
 }
 
 boot_write_entry() {
     boot_collect_ucode
     boot_entry_content "$KERNEL" >"$TARGET/boot/loader/entries/archinstall-super.conf" ||
-        die "Не удалось записать загрузочную запись."
+        die "Could not write the boot entry."
 }
 
 boot_install() {
-    info "Устанавливаю systemd-boot в EFI-раздел."
+    info "Installing systemd-boot to the EFI partition."
     if arch-chroot "$TARGET" bootctl --esp-path=/boot install; then
         return 0
     fi
     # Some virtual machines and locked-down firmware reject NVRAM updates even
     # though the EFI files themselves can be installed. Fall back to a
     # files-only install; the entry can be added later from the firmware menu.
-    warn "bootctl не смог обновить NVRAM; повторяю установку без EFI-переменных."
+    warn "bootctl could not update NVRAM; retrying without EFI variables."
     arch-chroot "$TARGET" bootctl --esp-path=/boot --no-variables install ||
-        die "bootctl не смог установить systemd-boot. Проверь EFI-раздел и NVRAM."
+        die "bootctl could not install systemd-boot. Check the EFI partition and NVRAM."
 }
 
 boot_verify() {
     [[ -f $TARGET/boot/EFI/systemd/systemd-bootx64.efi ]] ||
-        die "systemd-bootx64.efi отсутствует в EFI-разделе."
-    [[ -f $TARGET/boot/loader/loader.conf ]] || die "loader.conf отсутствует."
+        die "systemd-bootx64.efi is missing from the EFI partition."
+    [[ -f $TARGET/boot/loader/loader.conf ]] || die "loader.conf is missing."
     [[ -f $TARGET/boot/loader/entries/archinstall-super.conf ]] ||
-        die "Загрузочная запись отсутствует."
-    [[ -f $TARGET/boot/vmlinuz-$KERNEL ]] || die "Ядро /vmlinuz-$KERNEL не установлено."
+        die "The boot entry is missing."
+    [[ -f $TARGET/boot/vmlinuz-$KERNEL ]] || die "Kernel /vmlinuz-$KERNEL is not installed."
     [[ -f $TARGET/boot/initramfs-$KERNEL.img ]] ||
-        die "initramfs для $KERNEL не создан."
+        die "initramfs for $KERNEL was not created."
     if [[ ${ENCRYPT:-0} == 1 ]]; then
         grep -q "cryptdevice=UUID=${LUKS_UUID}" "$TARGET/boot/loader/entries/archinstall-super.conf" ||
-            die "В загрузочной записи неверный cryptdevice."
+            die "The boot entry has an invalid cryptdevice."
         grep -q "root=/dev/mapper/${LUKS_NAME}" "$TARGET/boot/loader/entries/archinstall-super.conf" ||
-            die "В загрузочной записи неверный root для LUKS."
+            die "The boot entry has an invalid root for LUKS."
         security_luks_validate
     else
         grep -q "root=UUID=${ROOT_UUID}" "$TARGET/boot/loader/entries/archinstall-super.conf" ||
-            die "В загрузочной записи неверный root=UUID."
+            die "The boot entry has an invalid root=UUID."
     fi
     if [[ ${FS_TYPE:-} == btrfs ]]; then
         validate_btrfs_root_flag "$TARGET/boot/loader/entries/archinstall-super.conf" ||
-            die "Для Btrfs не задан rootflags=subvol=@."
+            die "rootflags=subvol=@ is not set for Btrfs."
     fi
 }
 

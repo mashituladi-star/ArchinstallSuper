@@ -71,17 +71,17 @@ core_init() {
     if [[ $AS_LOG_TO_FILE == 1 ]]; then
         local log_dir
         log_dir=$(dirname -- "$LOG_FILE")
-        mkdir -p -- "$log_dir" || die "Не удалось создать каталог журнала: $log_dir"
-        : >"$LOG_FILE" || die "Не удалось открыть журнал: $LOG_FILE"
+        mkdir -p -- "$log_dir" || die "Could not create the log directory: $log_dir"
+        : >"$LOG_FILE" || die "Could not open the log file: $LOG_FILE"
         chmod 600 -- "$LOG_FILE" 2>/dev/null || true
     fi
 
-    mkdir -p -- "$STATE_DIR" || die "Не удалось создать каталог состояния: $STATE_DIR"
+    mkdir -p -- "$STATE_DIR" || die "Could not create the state directory: $STATE_DIR"
     chmod 700 -- "$STATE_DIR" 2>/dev/null || true
 
     if [[ -z $TEMP_DIR ]]; then
         TEMP_DIR=$(mktemp -d "${TMPDIR:-/tmp}/archinstallsuper.XXXXXX") ||
-            die "Не удалось создать временный каталог."
+            die "Could not create a temporary directory."
     fi
 
     if [[ $AS_LOG_TO_FILE == 1 ]]; then
@@ -94,7 +94,7 @@ core_init() {
     fi
 
     info "ArchinstallSuper $VERSION"
-    info "Журнал: $LOG_FILE"
+    info "Log: $LOG_FILE"
     debug "TARGET=$TARGET STATE_DIR=$STATE_DIR"
 
     # Sensitive paths above were created under umask 077. Restore the normal
@@ -113,7 +113,7 @@ core_silence_console() {
 }
 
 core_need() {
-    command -v "$1" >/dev/null 2>&1 || die "Не найдена обязательная команда: $1"
+    command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1"
 }
 
 core_need_optional() {
@@ -121,7 +121,7 @@ core_need_optional() {
 }
 
 core_require_root() {
-    [[ ${EUID:-$(id -u)} -eq 0 ]] || die "Установщик нужно запускать от root."
+    [[ ${EUID:-$(id -u)} -eq 0 ]] || die "The installer must be run as root."
 }
 
 core_is_uefi() {
@@ -238,7 +238,7 @@ core_retry() {
             return 0
         fi
         if ((attempt < attempts)); then
-            warn "Попытка $attempt/$attempts не удалась; повтор через ${delay}s."
+            warn "Attempt $attempt/$attempts failed; retrying in ${delay}s."
             core_sleep "$delay"
         fi
     done
@@ -246,7 +246,7 @@ core_retry() {
 }
 
 core_run() {
-    debug "Выполняю: $*"
+    debug "Running: $*"
     "$@"
 }
 
@@ -276,7 +276,7 @@ core_array_append_unique() {
 # Print a value or a fallback. Used by hardware/status reports.
 core_value_or() {
     local value=${1-}
-    local fallback=${2:-неизвестно}
+    local fallback=${2:-unknown}
     if [[ -n $value ]]; then
         printf '%s' "$value"
     else

@@ -24,86 +24,86 @@ workflow_ask_password() {
     local password confirm problem
     while ((attempts < 3)); do
         password=$(ui_password "$title" "$prompt") || return 1
-        confirm=$(ui_password "$title" "Повтори пароль для проверки:") || return 1
+        confirm=$(ui_password "$title" "Repeat the password to verify:") || return 1
         if [[ $password != "$confirm" ]]; then
-            ui_error "Пароли не совпадают. Попробуй снова."
+            ui_error "Passwords do not match. Try again."
             attempts=$((attempts + 1))
             continue
         fi
         if problem=$(security_password_problem "$password" "$user" "$HOSTNAME"); then
-            ui_error "Пароль не принят: $problem"
+            ui_error "Password rejected: $problem"
             attempts=$((attempts + 1))
             continue
         fi
         printf '%s' "$password"
         return 0
     done
-    ui_error "Слишком много неудачных попыток."
+    ui_error "Too many failed attempts."
     return 1
 }
 
 workflow_select_mode() {
     local choice
-    choice=$(ui_menu "Профиль системы" \
-        "Выбери состав устанавливаемой системы." \
-        "minimal" "Минимальная · консоль" \
-        "basic" "Базовая · GNOME" \
-        "full" "Полная · GNOME + приложения" \
-        "custom" "Кастомная настройка") || die "Выбор профиля отменён."
+    choice=$(ui_menu "System profile" \
+        "Choose the software set to install." \
+        "minimal" "Minimal · console" \
+        "basic" "Basic · GNOME" \
+        "full" "Full · GNOME + applications" \
+        "custom" "Custom setup") || die "Profile selection cancelled."
     case $choice in
         minimal) MODE=minimal; DESKTOP= ;;
         basic) MODE=basic; DESKTOP=gnome ;;
         full) MODE=full; DESKTOP=gnome ;;
         custom) MODE=custom; workflow_select_desktop ;;
-        *) die "Неизвестный профиль: $choice" ;;
+        *) die "Unknown profile: $choice" ;;
     esac
 }
 
 workflow_select_desktop() {
     local choice
-    choice=$(ui_menu "Рабочее окружение" "Выбери графическую среду или консоль." \
-        "none" "Только консоль" \
+    choice=$(ui_menu "Desktop environment" "Choose a graphical desktop or console." \
+        "none" "Console only" \
         "gnome" "GNOME" \
         "kde" "KDE Plasma" \
         "xfce" "XFCE" \
-        "cinnamon" "Cinnamon") || die "Выбор окружения отменён."
+        "cinnamon" "Cinnamon") || die "Desktop selection cancelled."
     case $choice in
         none) DESKTOP= ;;
         gnome|kde|xfce|cinnamon) DESKTOP=$choice ;;
-        *) die "Неизвестное окружение: $choice" ;;
+        *) die "Unknown desktop: $choice" ;;
     esac
 }
 
 workflow_select_kernel() {
     local choice
-    choice=$(ui_menu "Ядро Linux" "Выбери ядро. Все варианты совместимы с systemd-boot." \
-        "linux" "linux · стабильное" \
-        "linux-lts" "linux-lts · долгосрочное" \
-        "linux-zen" "linux-zen · оптимизировано для отзывчивости" \
-        "linux-hardened" "linux-hardened · усиленная безопасность") ||
-        die "Выбор ядра отменён."
+    choice=$(ui_menu "Linux kernel" "Choose a kernel. All options work with systemd-boot." \
+        "linux" "linux · stable" \
+        "linux-lts" "linux-lts · long-term support" \
+        "linux-zen" "linux-zen · optimized for responsiveness" \
+        "linux-hardened" "linux-hardened · hardened security") ||
+        die "Kernel selection cancelled."
     KERNEL=$choice
 }
 
 workflow_select_filesystem() {
     local choice
-    choice=$(ui_menu "Файловая система" "Выбери формат корневого раздела." \
-        "ext4" "ext4 · простая и надёжная" \
-        "btrfs" "Btrfs · подтомы, снимки, сжатие zstd" \
-        "xfs" "XFS · производительная для больших дисков") ||
-        die "Выбор файловой системы отменён."
+    choice=$(ui_menu "Filesystem" "Choose the root filesystem format." \
+        "ext4" "ext4 · simple and reliable" \
+        "btrfs" "Btrfs · subvolumes, snapshots, zstd compression" \
+        "xfs" "XFS · high performance for large disks") ||
+        die "Filesystem selection cancelled."
     FS_TYPE=$choice
 }
 
 workflow_select_encryption() {
-    if ! ui_confirm "Включить шифрование корневого раздела LUKS2?\n\nПароль будет запрошен при каждой загрузке."; then
+    if ! ui_confirm "Enable LUKS2 encryption for the root partition?\n\nYou will be asked for the password on every boot."; then
         ENCRYPT=0
         return 0
     fi
     ENCRYPT=1
     # shellcheck disable=SC2034  # used across modules
-    LUKS_PASSWORD=$(workflow_ask_password "Шифрование LUKS2" "Пароль шифрования корневого раздела:" "$USERNAME") ||
-        die "Пароль шифрования не задан."
+    LUKS_PASSWORD=$(workflow_ask_password "LUKS2 encryption" "Root encryption password:" "$USERNAME") ||
+        die "Encryption password not set."
 }
 
 workflow_system_settings() {
@@ -111,75 +111,75 @@ workflow_system_settings() {
 
     attempts=0
     while true; do
-        value=$(ui_input "Имя компьютера" "Hostname:" "archlinux") || die "Отменено."
+        value=$(ui_input "Hostname" "Hostname:" "archlinux") || die "Cancelled."
         if validate_hostname "$value"; then HOSTNAME=$value; break; fi
         ui_error "$VALIDATION_MESSAGE"
         attempts=$((attempts + 1))
-        ((attempts < 3)) || die "Не удалось задать hostname."
+        ((attempts < 3)) || die "Could not set the hostname."
     done
 
     attempts=0
     while true; do
-        value=$(ui_input "Учётная запись" "Имя обычного пользователя:") || die "Отменено."
+        value=$(ui_input "User account" "Regular user name:") || die "Cancelled."
         if validate_username "$value"; then USERNAME=$value; break; fi
         ui_error "$VALIDATION_MESSAGE"
         attempts=$((attempts + 1))
-        ((attempts < 3)) || die "Не удалось задать имя пользователя."
+        ((attempts < 3)) || die "Could not set the user name."
     done
 
     attempts=0
     while true; do
-        value=$(ui_input "Часовой пояс" "Например Europe/Prague или UTC:" "Europe/Prague") ||
-            die "Отменено."
+        value=$(ui_input "Timezone" "For example Europe/Prague or UTC:" "Europe/Prague") ||
+            die "Cancelled."
         if validate_timezone "$value"; then TIMEZONE=$value; break; fi
         ui_error "$VALIDATION_MESSAGE"
         attempts=$((attempts + 1))
-        ((attempts < 3)) || die "Не удалось задать часовой пояс."
+        ((attempts < 3)) || die "Could not set the timezone."
     done
 
     attempts=0
     while true; do
-        value=$(ui_input "Локаль" "Локаль системы:" "en_US.UTF-8") || die "Отменено."
+        value=$(ui_input "Locale" "System locale:" "en_US.UTF-8") || die "Cancelled."
         if validate_locale "$value"; then LOCALE=$value; break; fi
         ui_error "$VALIDATION_MESSAGE"
         attempts=$((attempts + 1))
-        ((attempts < 3)) || die "Не удалось задать локаль."
+        ((attempts < 3)) || die "Could not set the locale."
     done
 
     attempts=0
     while true; do
-        value=$(ui_input "Раскладка клавиатуры" "Раскладка:" "us") || die "Отменено."
+        value=$(ui_input "Keyboard layout" "Keyboard layout:" "us") || die "Cancelled."
         if validate_keymap "$value"; then KEYMAP=$value; break; fi
         ui_error "$VALIDATION_MESSAGE"
         attempts=$((attempts + 1))
-        ((attempts < 3)) || die "Не удалось задать раскладку."
+        ((attempts < 3)) || die "Could not set the keyboard layout."
     done
 
     local root_choice
-    root_choice=$(ui_menu "Пароль root" "Как администрировать систему?" \
-        "password" "Задать пароль root" \
-        "locked" "Заблокировать root, использовать sudo") ||
-        die "Выбор политики root отменён."
+    root_choice=$(ui_menu "Root password" "How should the system be administered?" \
+        "password" "Set a root password" \
+        "locked" "Lock root and use sudo") ||
+        die "Root policy selection cancelled."
     ROOT_POLICY=$root_choice
     if [[ $ROOT_POLICY == password ]]; then
         # shellcheck disable=SC2034  # used across modules
-        ROOT_PASSWORD=$(workflow_ask_password "Пароль root" "Пароль администратора root:" root) ||
-            die "Пароль root не задан."
+        ROOT_PASSWORD=$(workflow_ask_password "Root password" "Root administrator password:" root) ||
+            die "Root password not set."
     else
         # shellcheck disable=SC2034  # used across modules
         ROOT_PASSWORD=
     fi
 
     # shellcheck disable=SC2034  # used across modules
-    USER_PASSWORD=$(workflow_ask_password "Пароль пользователя" \
-        "Пароль для $USERNAME:" "$USERNAME") || die "Пароль пользователя не задан."
+    USER_PASSWORD=$(workflow_ask_password "User password" \
+        "Password for $USERNAME:" "$USERNAME") || die "User password not set."
 }
 
 workflow_extra_packages() {
     local text package
     local -a extra=()
-    text=$(ui_input "Дополнительные пакеты" \
-        "Имена пакетов через пробел (можно оставить пустым):" "") || return 0
+    text=$(ui_input "Additional packages" \
+        "Package names separated by spaces (leave empty to skip):" "") || return 0
     [[ -n $text ]] || return 0
     read -r -a extra <<<"$text"
     for package in "${extra[@]}"; do
@@ -205,14 +205,14 @@ workflow_build_packages() {
                 curl wget zip unzip)
             ;;
         custom)
-            if ui_confirm "Добавить инструменты разработки (Git, Python, Node.js, компиляторы)?"; then
+            if ui_confirm "Add development tools (Git, Python, Node.js, compilers)?"; then
                 PACKAGES+=(git base-devel python python-pip nodejs npm)
             fi
-            if ui_confirm "Добавить Firefox, VLC, GIMP и LibreOffice?"; then
+            if ui_confirm "Add Firefox, VLC, GIMP and LibreOffice?"; then
                 PACKAGES+=(firefox vlc gimp libreoffice-fresh)
             fi
             ;;
-        *) die "Неизвестный профиль: $MODE" ;;
+        *) die "Unknown profile: $MODE" ;;
     esac
 
     case $DESKTOP in
@@ -221,7 +221,7 @@ workflow_build_packages() {
         kde) PACKAGES+=(plasma-meta konsole dolphin sddm pipewire pipewire-alsa pipewire-pulse wireplumber) ;;
         xfce) PACKAGES+=(xfce4 xfce4-goodies lightdm lightdm-gtk-greeter pipewire pipewire-alsa pipewire-pulse wireplumber) ;;
         cinnamon) PACKAGES+=(cinnamon lightdm lightdm-gtk-greeter pipewire pipewire-alsa pipewire-pulse wireplumber) ;;
-        *) die "Неизвестное окружение: $DESKTOP" ;;
+        *) die "Unknown desktop: $DESKTOP" ;;
     esac
 
     local fs_package
@@ -236,41 +236,41 @@ workflow_build_packages() {
 
 workflow_summary_text() {
     cat <<EOF
-ПРОФИЛЬ
-  Режим:            $MODE
-  Окружение:        $(core_value_or "$DESKTOP" 'консоль')
-  Ядро:             $KERNEL
-  Пакетов:          ${#PACKAGES[@]}
+PROFILE
+  Mode:             $MODE
+  Desktop:          $(core_value_or "$DESKTOP" 'console')
+  Kernel:           $KERNEL
+  Packages:         ${#PACKAGES[@]}
 
-ДИСК
+DISK
 $(storage_layout_text | sed 's/^/  /')
 
-СИСТЕМА
+SYSTEM
   Hostname:         $HOSTNAME
-  Пользователь:     $USERNAME
-  Root:             $(if [[ $ROOT_POLICY == locked ]]; then echo 'заблокирован (sudo)'; else echo 'пароль задан'; fi)
-  Часовой пояс:     $TIMEZONE
-  Локаль:           $LOCALE
-  Раскладка:        $KEYMAP
-  zram:             $(if ((ZRAM)); then echo да; else echo нет; fi)
-  Secure Boot:      ${HW_SECURE_BOOT:-неизвестно}
+  User:             $USERNAME
+  Root:             $(if [[ $ROOT_POLICY == locked ]]; then echo 'locked (sudo)'; else echo 'password set'; fi)
+  Timezone:         $TIMEZONE
+  Locale:           $LOCALE
+  Keyboard layout:  $KEYMAP
+  zram:             $(if ((ZRAM)); then echo yes; else echo no; fi)
+  Secure Boot:      ${HW_SECURE_BOOT:-unknown}
 
-ВНИМАНИЕ: все данные на $DISK будут уничтожены.
+WARNING: all data on $DISK will be destroyed.
 EOF
 }
 
 workflow_show_summary() {
     local file="$TEMP_DIR/summary.txt"
     workflow_summary_text >"$file"
-    ui_show_text "Проверка перед установкой" "$file"
+    ui_show_text "Pre-installation check" "$file"
 }
 
 workflow_final_confirm() {
     local answer
-    answer=$(ui_input "Финальное подтверждение" \
-        "Введи INSTALL, чтобы начать установку. Диск $DISK будет очищен:") ||
-        die "Отменено до изменения диска."
-    [[ $answer == INSTALL ]] || die "Подтверждение не совпало; диск не изменён."
+    answer=$(ui_input "Final confirmation" \
+        "Type INSTALL to begin. Disk $DISK will be erased:") ||
+        die "Cancelled before any disk changes."
+    [[ $answer == INSTALL ]] || die "Confirmation did not match; the disk was not changed."
 }
 
 workflow_collect() {
@@ -287,7 +287,7 @@ workflow_collect() {
     ui_step_set 7
     workflow_select_encryption
     ui_step_set 8
-    if ui_confirm "Включить zram (сжатый swap в оперативной памяти)?"; then
+    if ui_confirm "Enable zram (compressed swap in RAM)?"; then
         ZRAM=1
     else
         ZRAM=0
@@ -295,8 +295,8 @@ workflow_collect() {
     workflow_extra_packages
     workflow_build_packages
     hw_check_memory "$([[ -n $DESKTOP ]] && echo 1 || echo 0)"
-    if [[ ${HW_SECURE_BOOT:-} == *включ* || ${HW_SECURE_BOOT:-} == *enabled* ]]; then
-        warn "Secure Boot включён, а systemd-boot не подписывается. Загрузка может потребовать отключения Secure Boot или ручного добавления ключей."
+    if [[ ${HW_SECURE_BOOT:-} == *enabled* ]]; then
+        warn "Secure Boot is enabled, but systemd-boot is not signed. Booting may require disabling Secure Boot or manually enrolling keys."
     fi
     validate_all
     ui_step_set 9
@@ -319,7 +319,7 @@ workflow_execute() {
     install_copy_log
     plugin_hook post_install
     if ! storage_unmount_target; then
-        die "Не удалось безопасно размонтировать целевую систему."
+        die "Could not safely unmount the target system."
     fi
     # shellcheck disable=SC2034  # used across modules
     INSTALL_COMPLETE=1
@@ -327,11 +327,11 @@ workflow_execute() {
 }
 
 workflow_after_success() {
-    ui_msg "$(install_success_text)" "Установка завершена"
-    if ui_confirm "Перезагрузиться сейчас?"; then
+    ui_msg "$(install_success_text)" "Installation complete"
+    if ui_confirm "Reboot now?"; then
         reboot
     else
-        info "Перезагрузись вручную после извлечения установочного носителя."
+        info "Reboot manually after removing the installation media."
     fi
 }
 
@@ -342,7 +342,7 @@ workflow_check_only() {
     local rc=0
     network_check || rc=1
     if ((rc == 0)); then
-        info "Предварительная проверка пройдена: UEFI, live-среда и интернет доступны."
+        info "Preflight check passed: UEFI, live environment and network are available."
     fi
     return "$rc"
 }
